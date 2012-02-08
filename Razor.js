@@ -1,9 +1,131 @@
 /*global window */
 /*jshint curly: false, evil: true */
 var Razor = (function () {
-  var rxCode = /@((\{([^\}]*)\})|(([\w.\(\)\[\]]+|("([^"\\]*(\\.[^"\\]*)*)")|('([^'\\]*(\\.[^'\\]*)*)'))*))/g;
+  function parse(template, level, _mode) {
+    level = level || 0;
+    _mode = _mode || 0;
 
-  //based on https://gist.github.com/964762
+    var mode = _mode || 0,
+      cmds = level > 0 ? [] : ['var writer = []; \r\nfunction write(txt){ writer.push(txt); }\r\nwith(this){'],
+      cmd = mode === 0 ? '"' : '',
+      c, c0, np = 0, mode0;
+
+    function push(cmd) {
+      if (!cmd || cmd === '""') return;
+      if (mode >= 6) cmds.push(cmd);
+      else cmds.push('\twrite(' + cmd + ');');
+    }
+
+    for (var i = 0, ii = template.length; i < ii; i++) {
+      c0 = c;
+      c = template[i];
+      if (mode === 5) {
+        if (c === "@" && c0 === '*') {
+          mode = mode0;
+        }
+
+      } else if (mode === 0) {
+        if (c === '@') {
+          mode0 = mode; mode = 1;
+          push(cmd + '"');
+          cmd = '';
+
+        } else {
+          if (c === '"') c = '\\"';
+          cmd += c;
+        }
+
+      } else if (mode > 0) {
+        if (mode === 3) {
+          if (c === '"' && c0 !== '\\') {
+            mode = mode0;
+            cmd += c;
+            c = '';
+          }
+        } else if (mode === 4) {
+          if (c === "'" && c0 !== '\\') {
+            mode = mode0;
+            cmd += c;
+            c = '';
+          }
+
+        } else if (mode === 6) {
+          var inblock = np > 0;
+          if (c === '{') np++;
+          else if (c === '}') np--;
+
+          if (inblock && np === 0) {
+            var start = cmd.indexOf('{') + 1;
+            push(cmd.substr(0, start));
+            push(parse(cmd.substr(start), level + 1, 7));
+            push('}');
+            mode = mode0;
+            c = cmd = '';
+          }
+
+        } if (mode === 7) {
+          if (c === '<' || c === '@') {
+            push(cmd);
+            mode0 = 7; mode = 0;
+            cmd = '';
+            if (c === '@') {
+              c = '';
+              mode0 = mode; mode = 1;
+            }
+          }
+
+        } else {
+          if (mode === 1) {
+            if (c === '@') {
+              mode0 = mode; mode = _mode;
+              cmd = _mode === 0 ? '"' : '';
+            } else if (c === '*' && cmd.length === 0) {
+              mode0 = mode; mode = 5;
+              c = '';
+
+            } else if (c === '(') {
+              if (cmd === '') {
+                mode0 = mode; mode = 2;
+                c = '';
+                np = 1;
+
+              } else if (cmd === 'if' || cmd === 'while') {
+                mode0 = mode; mode = 6;
+              }
+
+            } else if (!/[\w\[\]\(\).]/.test(c)) {
+              mode0 = mode; mode = _mode;
+              if (_mode === 7) cmd = 'write(' + cmd + ')';
+              push(cmd);
+              cmd = _mode === 0 ? '"' : '';
+            }
+
+          } else if (mode === 2) {
+            if (c === '(') np++;
+            else if (c === ')') np--;
+            if (np === 0) {
+              mode0 = mode; mode = _mode;
+              c = '';
+              push(cmd);
+              cmd = _mode === 0 ? '"' : '';
+            }
+          }
+
+          if (c === '"') { mode0 = mode; mode = 3; }
+          if (c === "'") { mode0 = mode; mode = 4; }
+        }
+
+        cmd += c;
+      }
+    }
+
+    mode = _mode;
+    cmd += (mode === 0 ? '"' : '');
+    push(cmd);
+
+    return cmds.join('\r\n') + (level > 0 ? '' : '\r\n}\r\n\treturn writer.join("");');
+  }
+
   function extend(a) {
     for (var i = 1, ii = arguments.length; i < ii; i++) {
       var b = arguments[i];
@@ -15,36 +137,13 @@ var Razor = (function () {
     return a;
   }
 
-  function template(
-    source, // the string source from which the template is compiled
-    page0 // the default `with` context of the template (optional)
-    ) {
-    return function (
-        model, // the object called as `this` in the template
-        page // the `with` context of this template call (optional)
-        ) {
-      return source.replace(
-            rxCode, // a regexp that finds the interpolated code: "@{<code>}"
-            function (
-            _, // not used, only positional
-            codeWrapped, // the code matched by the interpolation
-            __, // positional
-            code // the code matched by the interpolation
-            ) {
-              var context = extend({}, page || page0, { model: model });
-              return new Function("with(this)return " + (code || codeWrapped))
-                    .call(context);
-            });
+  function compile(code, page) {
+    var func = new Function(parse(code));
+    return function (model, page1) {
+      var ctx = extend({}, page, page1, { model: model });
+      return func.apply(ctx);
     };
   }
 
-  return {
-    compile: function (markup, page) {
-      return template(markup, page);
-    },
-    render: function (markup, model, page) {
-      return this.compile(markup, page)(model);
-    }
-  };
-
-})(); 
+  return { compile: compile, parse: parse, render: function (markup, model, page) { return compile(markup, page)(model); } };
+})();
