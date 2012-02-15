@@ -68,7 +68,7 @@ var Razor = (function () {
   } ();
 
   //Reader Extensions
-  var rxValid = /^[a-z0-9\.\(\)\[\]_]+/;
+  var rxValid = /^[a-z0-9\._]+/i;
   function last(str) {
     return (str = (str || ''))[str.length - 1] || '';
   }
@@ -129,9 +129,7 @@ var Razor = (function () {
     var rdr = new Reader(template),
       level = arguments[1] || 0, mode = arguments[2] || 0,
       cmds = level > 0 ? [] : ['var writer = []; \r\nfunction write(txt){ writer.push(txt); }\r\nwith(this){'],
-      block, peek, ctrl;
-
-    console.log(level);
+      block, peek;
 
     while (true) {
       block = mode === 0 ? rdr.readUntil('@') : rdr.readQuotedUntil('@', '<');
@@ -162,27 +160,24 @@ var Razor = (function () {
         cmds.push(parse(block.value, level + 1, 1));
 
       } else if (
-          (peek === 'i' && (ctrl = rdr.peek(2)) === 'if') ||
-          (peek === 'd' && (ctrl = rdr.peek(2)) === 'do') ||
-          (peek === 'f' && (ctrl = rdr.peek(3)) === 'for') ||
-          (peek === 'w' && (ctrl = rdr.peek(5)) === 'while')
+          (peek === 'i' && rdr.peek(2) === 'if') ||
+          (peek === 'd' && rdr.peek(2) === 'do') ||
+          (peek === 'f' && rdr.peek(3) === 'for') ||
+          (peek === 'w' && rdr.peek(5) === 'while')
         ) {
         block = rdr.readBlock('{', '}');
         cmds.push(parse(block.value + block.next, level + 1, 1));
 
       } else if (peek && !rxValid.test(last(block.value))) {
-        var remain, match, cmd = '', next;
+        var remain, match, cmd = '';
         while (true) {
           remain = rdr.text.substr(rdr.position + 1);
           match = remain.match(rxValid);
           if (!match) break;
           cmd += rdr.read(match[0].length);
-          next = last(match[0]);
-          if (next === '[' || next === '(') {
-            peek = rdr.peek();
-            if (peek === '"' || peek === "'") {
-              cmd += rdr.read() + rdr.readQuoted(peek);
-            }
+          peek = rdr.peek();
+          if (peek === '[' || peek === '(') {
+            cmd += rdr.readBlock(peek, peek === '[' ? ']' : ')').value;
           }
         }
         if (cmd) cmds.push('\twrite(' + cmd + ');');
