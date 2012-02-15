@@ -151,11 +151,12 @@ var Razor = (function () {
     return ret;
   };
 
+
+  var _function_template = 'var writer = []; #1 #2 \r\nfunction write(txt){ writer.push(txt); }\r\nwith(this){ #0\r\n}\r\nreturn writer.join("");';
   function parse(template) {
     var rdr = new Reader(template),
       level = arguments[1] || 0, mode = arguments[2] || 0,
-      cmds = level > 0 ? [] : ['var writer = []; \r\nfunction write(txt){ writer.push(txt); }\r\nwith(this){'],
-      chunk, peek, block;
+      cmds = [], helpers = [], sections = [], chunk, peek, block;
 
     while (true) {
       chunk = mode === 0 ? rdr.readUntil('@') : rdr.readQuotedUntil('@', '<');
@@ -193,7 +194,9 @@ var Razor = (function () {
           (peek === 'i' && rdr.peek(2) === 'if') ||
           (peek === 'd' && rdr.peek(2) === 'do') ||
           (peek === 'f' && rdr.peek(3) === 'for') ||
-          (peek === 'w' && rdr.peek(5) === 'while')
+          (peek === 'w' && rdr.peek(5) === 'while') ||
+          (peek === 'h' && rdr.peek(6) === 'helper') ||
+          (peek === '7' && rdr.peek(7) === 'section')
         ) {
         block = rdr.readBlock('{', '}');
         if (peek === 'i') {
@@ -208,7 +211,9 @@ var Razor = (function () {
           }
         }
 
-        cmds.push(parse(block, level + 1, 1));
+        if (peek === 'h') helpers.push('function ' + parse(block.substr(6).trim(), level + 1, 1));
+        else if (peek === 's') sections.push('function _section_' + parse(block.substr(7).trim(), level + 1, 1));
+        else cmds.push(parse(block, level + 1, 1));
 
       } else if (peek && !rxValid.test(last(chunk.value))) {
         var remain, match, cmd = '';
@@ -226,7 +231,14 @@ var Razor = (function () {
       } else if (mode === 0 && chunk.next) cmds.push('\twrite("@");');
     }
 
-    return cmds.join('\r\n') + (level > 0 ? '' : '\r\n}\r\nreturn writer.join("");');
+    template = cmds.join('\r\n');
+    if (level === 0) {
+      template = _function_template
+        .replace('#0', template)
+        .replace('#1', helpers.join('\r\n'))
+        .replace('#2', sections.join('\r\n'));
+    }
+    return template;
   }
 
   function doubleEncode(txt) {
