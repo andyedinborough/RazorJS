@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+<head>
+
+</head>
+<body>
+  <div id="notices"></div>
+  
+  <script src="Razor.js"></script>
+  <script type="application/x-razor-js" data-view-id="notice">
+    @* this view is for displaying notices *@
+    <div class="notice@(model.icon || model.userID ? ' has-icon': '')" data-id="@model.id">
+      @if(model.icon) { 
+        <img class="notice-icon" src="@model.icon" />
+      } else if (model.userID) {
+        <img class="notice-icon" src="http://tracky.com/content/icon/user/@(model.userID)[48].png" />
+      }
+      <div class="content">
+        <span class="paragraph">@model.message</span>
+        <div class="meta">
+          @if(model.date){
+            <time data-date="@model.date"> </time>
+          }
+        </div>
+      </div>
+      @if (model.buttons && !$.isEmptyObject(model.buttons)){
+        <div class="buttons"></div>
+      }
+    </div>
+  </script>
+  
+  <script>
+    var view = Razor.view('notice'),
+      container = document.getElementById('notices'),
+      models = [
+        { userID: 1, message: 'commented "Wat?!"', date: Date.now() }
+      ];
+    
+    models.forEach(function(model){
+      var div = document.createElement('div');
+      div.innerHTML = view(model);
+      container.appendChild(div);
+    });  
+  </script>
+</body>
+</html>
