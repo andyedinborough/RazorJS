@@ -133,7 +133,7 @@ var Razor = (function () {
       block, peek, ctrl;
 
     while (true) {
-      block = rdr.readQuotedUntil('@');
+      block = mode === 0 ? rdr.readUntil('@') : rdr.readQuotedUntil('@');
       if (!block || (!block.value && !block.next)) break;
       peek = rdr.peek();
 
@@ -141,7 +141,8 @@ var Razor = (function () {
       if (mode === 0) cmds.push('\twrite("' + doubleEncode(block.value) + '");');
       else cmds.push(block.value);
 
-      if (peek === '(') {
+      if (peek === '*') rdr.readUntil('*@');
+      else if (peek === '(') {
         block = rdr.readBlock('(', ')');
         cmds.push('\twrite(' + block.value.substr(1, block.value.length - 2) + ');');
 
@@ -162,7 +163,6 @@ var Razor = (function () {
         var remain, match, cmd = '';
         while (true) {
           remain = rdr.text.substr(rdr.position + 1);
-          console.log(remain);
           match = remain.match(rxValid);
           if (!match) break;
           cmd += rdr.read(match[0].length);
@@ -172,18 +172,14 @@ var Razor = (function () {
           }
         }
         if (cmd) cmds.push('\twrite(' + cmd + ');');
-      } else cmds.push('\twrite("@");');
+      } else if (mode === 0) cmds.push('\twrite("@");');
     }
 
     return cmds.join('\r\n') + (level > 0 ? '' : '\r\n}\r\nreturn writer.join("");');
   }
 
-  function optimize(code) {
-    return code.split('");\r\n\twrite("').join('');
-  }
-
   function doubleEncode(txt) {
-    return txt.replace('\r', '\\r').replace('\n', '\\n').replace('"', '\\"');
+    return txt.split('\r').join('\\r').split('\n').join('\\n').split('"').join('\\"');
   }
 
   function extend(a) {
@@ -198,6 +194,8 @@ var Razor = (function () {
   }
 
   function compile(code, page) {
+    var parsed = parse(code);
+    console.log(parsed);
     var func = new Function(parse(code));
     return function (model, page1) {
       var ctx = extend({}, page, page1, { model: model });
