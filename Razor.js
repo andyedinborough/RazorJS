@@ -1,4 +1,4 @@
-/*global window */
+﻿/*global window */
 /*jshint curly: false, evil: true */
 var Razor = (function () {
   var Reader = window.Reader = function () {
@@ -9,6 +9,14 @@ var Razor = (function () {
       this.position = -1;
       this.length = this.text.length;
     };
+
+    var chunk = reader.Chunk = function (value, next) {
+      if (!this || this.length !== 0) return new reader.Chunk(value, next);
+      this.value = value || ''; this.next = next || '';
+      this.length = (this.value + this.next).length;
+    };
+    reader.Chunk.prototype.length = 0;
+    reader.Chunk.prototype.toString = function () { return this.value + this.next + ''; };
 
     reader.prototype.read = function (len) {
       var value = this.peek(len);
@@ -38,30 +46,44 @@ var Razor = (function () {
       return this.position === this.length;
     };
 
-    reader.prototype.readUntil = function (chars) {
-      if (typeof chars === 'string') chars = [chars];
-      var l, rdr = this, cache = [], len = chars.length, result = { value: '', next: '' };
+    function read(rdr, chars, until) {
+      var l, cache = [], len = chars.length, result = '', next = '';
 
       function predicate(chr) {
         l = chr.length;
-        result.next = cache[l] || (cache[l] = rdr.peek(l));
-        return result.next === chr;
+        next = cache[l] || (cache[l] = rdr.peek(l));
+        return next === chr;
       }
 
       while (true) {
         cache.length = 0;
-        if (chars.some(predicate)) {
-          this.seek(l);
-          return result;
+        if (until === chars.some(predicate)) {
+          if (until) {
+            rdr.seek(l);
+          } else {
+            next = last(result);
+            result = result.length > 0 ? result.substr(0, result.length - 1) : '';
+          }
+          return chunk(result, next);
         }
 
-        result.next = this.read();
-        if (result.next) {
-          result.value += result.next;
+        next = rdr.read();
+        if (next) {
+          result += next;
         } else break;
       }
 
-      return result;
+      return chunk(result, next);
+    }
+
+    reader.prototype.readUntil = function (chars) {
+      if (typeof chars === 'string') chars = [].slice.call(arguments);
+      return read(this, chars, true);
+    };
+
+    reader.prototype.readWhile = function (chars) {
+      if (typeof chars === 'string') chars = [].slice.call(arguments);
+      return read(this, chars, false);
     };
 
     return reader;
@@ -72,6 +94,10 @@ var Razor = (function () {
   function last(str) {
     return (str = (str || ''))[str.length - 1] || '';
   }
+
+  Reader.prototype.readWhitespace = function () {
+    return this.readWhile('\r', '\n', '\t', ' ');
+  };
 
   Reader.prototype.readQuoted = function (quote) {
     var result = '', block;
@@ -100,15 +126,15 @@ var Razor = (function () {
       } else break;
     }
 
-    return { value: result, next: block.next };
+    return Reader.Chunk(result, block.next);
   };
 
   Reader.prototype.readBlock = function (open, close, numOpen) {
-    var block, blockChars = [open, close], ret = { value: '', next: '' };
+    var block, blockChars = [open, close], ret = '';
     numOpen = numOpen || 0;
 
     while ((block = this.readUntil(blockChars))) {
-      ret.value += block.value;
+      ret += block.value;
 
       if (block.next === open) {
         numOpen++;
@@ -117,9 +143,9 @@ var Razor = (function () {
       }
 
       if (numOpen === 0) {
-        ret.value += block.next;
+        ret += block.next;
         return ret;
-      } else ret.value += block.next;
+      } else ret += block.next;
     }
 
     return ret;
@@ -129,35 +155,39 @@ var Razor = (function () {
     var rdr = new Reader(template),
       level = arguments[1] || 0, mode = arguments[2] || 0,
       cmds = level > 0 ? [] : ['var writer = []; \r\nfunction write(txt){ writer.push(txt); }\r\nwith(this){'],
-      block, peek;
+      chunk, peek, block;
 
     while (true) {
-      block = mode === 0 ? rdr.readUntil('@') : rdr.readQuotedUntil('@', '<');
-      if (!block || (!block.value && !block.next)) break;
+      chunk = mode === 0 ? rdr.readUntil('@') : rdr.readQuotedUntil('@', '<');
+      if (!chunk || (!chunk.value && !chunk.next)) break;
       peek = rdr.peek();
 
-      if (peek === '@') block.value += rdr.read();
-      if (block.value) {
-        if (mode === 0) cmds.push('\twrite("' + doubleEncode(block.value) + '");');
-        else cmds.push(block.value);
+      if (peek === '@') chunk.value += rdr.read();
+      if (chunk.value) {
+        if (mode === 0) cmds.push('\twrite("' + doubleEncode(chunk.value) + '");');
+        else cmds.push(chunk.value);
       }
 
-      if (mode === 1 && block.next === '<') {
+      if (mode === 1 && chunk.next === '<') {
         var tagname = rdr.text.substr(rdr.position + 1).match(/^[a-z]+/i);
         if (tagname) {
-          block = rdr.readUntil('</' + tagname + '>');
-          cmds.push(parse('<' + block.value + block.next, level + 1, 0));
+          chunk = rdr.readUntil('>');
+          block = chunk + '';
+          if (last(chunk.value) !== '/') {
+            block += rdr.readUntil('</' + tagname + '>');
+          }
+          cmds.push(parse('<' + block, level + 1, 0));
         }
       }
 
       if (peek === '*') rdr.readUntil('*@');
       else if (peek === '(') {
         block = rdr.readBlock('(', ')');
-        cmds.push('\twrite(' + block.value.substr(1, block.value.length - 2) + ');');
+        cmds.push('\twrite(' + block.substr(1, block.length - 2) + ');');
 
       } else if (peek === '{') {
         block = rdr.readBlock('{', '}');
-        cmds.push(parse(block.value, level + 1, 1));
+        cmds.push(parse(block, level + 1, 1));
 
       } else if (
           (peek === 'i' && rdr.peek(2) === 'if') ||
@@ -166,9 +196,21 @@ var Razor = (function () {
           (peek === 'w' && rdr.peek(5) === 'while')
         ) {
         block = rdr.readBlock('{', '}');
-        cmds.push(parse(block.value + block.next, level + 1, 1));
+        if (peek === 'i') {
+          while (true) {
+            var whiteSpace = rdr.readWhitespace();
+            if (!whiteSpace) break;
+            else if (rdr.peek(4) !== 'else') {
+              rdr.seek(-whiteSpace.length);
+              break;
+            }
+            block += whiteSpace + rdr.readBlock('{', '}');
+          }
+        }
 
-      } else if (peek && !rxValid.test(last(block.value))) {
+        cmds.push(parse(block, level + 1, 1));
+
+      } else if (peek && !rxValid.test(last(chunk.value))) {
         var remain, match, cmd = '';
         while (true) {
           remain = rdr.text.substr(rdr.position + 1);
@@ -177,11 +219,11 @@ var Razor = (function () {
           cmd += rdr.read(match[0].length);
           peek = rdr.peek();
           if (peek === '[' || peek === '(') {
-            cmd += rdr.readBlock(peek, peek === '[' ? ']' : ')').value;
+            cmd += rdr.readBlock(peek, peek === '[' ? ']' : ')');
           }
         }
         if (cmd) cmds.push('\twrite(' + cmd + ');');
-      } else if (mode === 0 && block.next) cmds.push('\twrite("@");');
+      } else if (mode === 0 && chunk.next) cmds.push('\twrite("@");');
     }
 
     return cmds.join('\r\n') + (level > 0 ? '' : '\r\n}\r\nreturn writer.join("");');
@@ -204,6 +246,7 @@ var Razor = (function () {
 
   function compile(code, page) {
     var func, parsed = parse(code);
+    console.log(parsed);
     try {
       func = new Function(parsed);
     } catch (x) {
