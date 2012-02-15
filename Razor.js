@@ -172,7 +172,7 @@ var Razor = (function () {
           }
         }
         if (cmd) cmds.push('\twrite(' + cmd + ');');
-      } else if (mode === 0) cmds.push('\twrite("@");');
+      } else if (mode === 0 && block.next) cmds.push('\twrite("@");');
     }
 
     return cmds.join('\r\n') + (level > 0 ? '' : '\r\n}\r\nreturn writer.join("");');
@@ -194,9 +194,8 @@ var Razor = (function () {
   }
 
   function compile(code, page) {
-    var parsed = parse(code);
-    console.log(parsed);
-    var func = new Function(parse(code));
+    var parsed = parse(code),
+      func = new Function(parsed);
     return function (model, page1) {
       var ctx = extend({}, page, page1, { model: model });
       return func.apply(ctx);
