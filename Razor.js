@@ -1,8 +1,8 @@
 ﻿/*global window */
 /*jshint curly: false, evil: true */
 var Razor = (function () {
+  'use strict';
   var Reader = window.Reader = function () {
-    'use strict';
 
     var reader = function (text) {
       this.text = (text || '') + '';
@@ -262,7 +262,7 @@ var Razor = (function () {
     var template = views['~/' + id];
     if (!template) {
       var script;
-      [ ].slice.call(document.getElementsByTagName('script')).some(function (x) {
+      [ ].slice.call(window.document.getElementsByTagName('script')).some(function (x) {
         return x.type === 'application/x-razor-js' &&
           x.getAttribute('data-view-id') === id &&
           (script = x);
