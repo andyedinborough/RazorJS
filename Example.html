@@ -17,16 +17,18 @@
       }
       <div class="content">
         <span class="paragraph">@model.message</span>
-        <div class="meta">
-          @if(model.date){
-            <time data-date="@model.date"> </time>
-          }
-        </div>
+        <div class="meta">@showDate()</div>
       </div>
       @if (model.buttons && !$.isEmptyObject(model.buttons)){
         <div class="buttons"></div>
       }
     </div>
+    
+    @helper showDate() {
+      if(model.date){
+        <time data-date="@model.date"> </time>
+      }
+    }
   </script>
   
   <script>

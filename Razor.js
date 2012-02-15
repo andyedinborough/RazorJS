@@ -151,12 +151,35 @@ var Razor = (function () {
     return ret;
   };
 
+  var cmd = function Cmd(code, type) {
+    if (!this || this.type !== 0) return new Cmd(code, type);
+    this.code = code || '';
+    this.type = type || 0;
+  };
+  extend(cmd.prototype, {
+    type: 0,
+    toString: function () {
+      var code = this.code;
+      if (this.type === 0) return code;
+      if (this.type === 2) code = "\"" + doubleEncode(code) + "\"";
+      return 'write(' + code + ');';
+    }
+  });
 
-  var _function_template = 'var writer = []; #1 #2 \r\nfunction write(txt){ writer.push(txt); }\r\nwith(this){ #0\r\n}\r\nreturn writer.join("");';
-  function parse(template) {
+  var _function_template = 'var writer = []; \r\nfunction write(txt){ writer.push(txt); }\r\nwith(this){\r\n#1\r\n#2\r\n#0\r\n}\r\nreturn writer.join("");';
+  function parse(template, optimize) {
     var rdr = new Reader(template),
       level = arguments[1] || 0, mode = arguments[2] || 0,
       cmds = [], helpers = [], sections = [], chunk, peek, block;
+    cmds.push = (function (push) {
+      return function (code, type) {
+        if (typeof code === 'string') code = [code];
+        code = code.map(function (x) {
+          return x instanceof cmd ? x : cmd(x, type);
+        });
+        push.apply(this, code);
+      };
+    })(cmds.push);
 
     while (true) {
       chunk = mode === 0 ? rdr.readUntil('@') : rdr.readQuotedUntil('@', '<');
@@ -165,7 +188,7 @@ var Razor = (function () {
 
       if (peek === '@') chunk.value += rdr.read();
       if (chunk.value) {
-        if (mode === 0) cmds.push('\twrite("' + doubleEncode(chunk.value) + '");');
+        if (mode === 0) cmds.push(chunk.value, 2);
         else cmds.push(chunk.value);
       }
 
@@ -184,7 +207,7 @@ var Razor = (function () {
       if (peek === '*') rdr.readUntil('*@');
       else if (peek === '(') {
         block = rdr.readBlock('(', ')');
-        cmds.push('\twrite(' + block.substr(1, block.length - 2) + ');');
+        cmds.push(block.substr(1, block.length - 2), 1);
 
       } else if (peek === '{') {
         block = rdr.readBlock('{', '}');
@@ -211,34 +234,59 @@ var Razor = (function () {
           }
         }
 
-        if (peek === 'h') helpers.push('function ' + parse(block.substr(6).trim(), level + 1, 1));
-        else if (peek === 's') sections.push('function _section_' + parse(block.substr(7).trim(), level + 1, 1));
+        if (peek === 'h') helpers.push('function ' + parse(block.substr(6).trim(), level + 1, 1).join('\r\n'));
+        else if (peek === 's') sections.push('function _section_' + parse(block.substr(7).trim(), level + 1, 1).join('\r\n'));
         else cmds.push(parse(block, level + 1, 1));
 
       } else if (peek && !rxValid.test(last(chunk.value))) {
-        var remain, match, cmd = '';
+        var remain, match;
+        block = '';
         while (true) {
           remain = rdr.text.substr(rdr.position + 1);
           match = remain.match(rxValid);
           if (!match) break;
-          cmd += rdr.read(match[0].length);
+          block += rdr.read(match[0].length);
           peek = rdr.peek();
           if (peek === '[' || peek === '(') {
-            cmd += rdr.readBlock(peek, peek === '[' ? ']' : ')');
+            block += rdr.readBlock(peek, peek === '[' ? ']' : ')');
           }
         }
-        if (cmd) cmds.push('\twrite(' + cmd + ');');
-      } else if (mode === 0 && chunk.next) cmds.push('\twrite("@");');
+        if (block) cmds.push(block, 1);
+      } else if (mode === 0 && chunk.next) cmds.push('@', 2);
     }
 
+    if (optimize !== false) {
+      cmds.reduce(function (a, b) {
+        if (a.type === 2 && b.type === 2) {
+          a.code += b.code;
+        } else if (a.type === 2 && b.type === 1) {
+          a.code = '"' + doubleEncode(a.code) + '"+(' + b.code + ')';
+          a.type = 1;
+        } else if (a.type == 1 && b.type === 1) {
+          a.code += '+(' + b.code + ')';
+        } else if (a.type === 1 && b.type === 2) {
+          if (last(a.code) === '"') 
+            a.code = a.code.substr(0, a.code.length - 1);
+          else a.code += '+"';
+          a.code += doubleEncode(b.code) + '"';
+        } else {
+          return b;
+        }
+
+        b.code = '';
+        return a;
+      });
+      cmds = cmds.filter(function (a) {
+        return !!a.code;
+      });
+    }
+
+    if (level > 0) return cmds;
     template = cmds.join('\r\n');
-    if (level === 0) {
-      template = _function_template
+    return _function_template
         .replace('#0', template)
         .replace('#1', helpers.join('\r\n'))
         .replace('#2', sections.join('\r\n'));
-    }
-    return template;
   }
 
   function doubleEncode(txt) {
@@ -256,8 +304,8 @@ var Razor = (function () {
     return a;
   }
 
-  function compile(code, page) {
-    var func, parsed = parse(code);
+  function compile(code, page, optimize) {
+    var func, parsed = parse(code, optimize);
     try {
       func = new Function(parsed);
     } catch (x) {
