@@ -246,7 +246,6 @@ var Razor = (function () {
 
   function compile(code, page) {
     var func, parsed = parse(code);
-    console.log(parsed);
     try {
       func = new Function(parsed);
     } catch (x) {
