@@ -87,9 +87,8 @@ var Razor = (function () {
 
   Reader.prototype.readQuotedUntil = function (chars) {
     var result = '', block;
-    if (typeof chars == 'string') chars = [chars];
-    chars.push('"', "'", '@*');
-    chars.push(chars.shift());
+    if (typeof chars == 'string') chars = [].slice.call(arguments);
+    chars = ['"', "'", '@*'].concat(chars);
 
     while ((block = this.readUntil(chars))) {
       result += block.value;
@@ -132,14 +131,26 @@ var Razor = (function () {
       cmds = level > 0 ? [] : ['var writer = []; \r\nfunction write(txt){ writer.push(txt); }\r\nwith(this){'],
       block, peek, ctrl;
 
+    console.log(level);
+
     while (true) {
-      block = mode === 0 ? rdr.readUntil('@') : rdr.readQuotedUntil('@');
+      block = mode === 0 ? rdr.readUntil('@') : rdr.readQuotedUntil('@', '<');
       if (!block || (!block.value && !block.next)) break;
       peek = rdr.peek();
 
       if (peek === '@') block.value += rdr.read();
-      if (mode === 0) cmds.push('\twrite("' + doubleEncode(block.value) + '");');
-      else cmds.push(block.value);
+      if (block.value) {
+        if (mode === 0) cmds.push('\twrite("' + doubleEncode(block.value) + '");');
+        else cmds.push(block.value);
+      }
+
+      if (mode === 1 && block.next === '<') {
+        var tagname = rdr.text.substr(rdr.position + 1).match(/^[a-z]+/i);
+        if (tagname) {
+          block = rdr.readUntil('</' + tagname + '>');
+          cmds.push(parse('<' + block.value + block.next, level + 1, 0));
+        }
+      }
 
       if (peek === '*') rdr.readUntil('*@');
       else if (peek === '(') {
@@ -160,15 +171,18 @@ var Razor = (function () {
         cmds.push(parse(block.value + block.next, level + 1, 1));
 
       } else if (peek && !rxValid.test(last(block.value))) {
-        var remain, match, cmd = '';
+        var remain, match, cmd = '', next;
         while (true) {
           remain = rdr.text.substr(rdr.position + 1);
           match = remain.match(rxValid);
           if (!match) break;
           cmd += rdr.read(match[0].length);
-          peek = rdr.peek();
-          if (peek === '"' || peek === "'") {
-            cmd += rdr.read() + rdr.readQuoted(peek);
+          next = last(match[0]);
+          if (next === '[' || next === '(') {
+            peek = rdr.peek();
+            if (peek === '"' || peek === "'") {
+              cmd += rdr.read() + rdr.readQuoted(peek);
+            }
           }
         }
         if (cmd) cmds.push('\twrite(' + cmd + ');');
@@ -194,13 +208,35 @@ var Razor = (function () {
   }
 
   function compile(code, page) {
-    var parsed = parse(code),
+    var func, parsed = parse(code);
+    try {
       func = new Function(parsed);
+    } catch (x) {
+      throw x.message + ': ' + parsed;
+    }
     return function (model, page1) {
       var ctx = extend({}, page, page1, { model: model });
       return func.apply(ctx);
     };
   }
 
-  return { compile: compile, parse: parse, render: function (markup, model, page) { return compile(markup, page)(model); } };
+  var views = {};
+  function view(id, page) {
+    var template = views['~/' + id];
+    if (!template) {
+      var script;
+      [ ].slice.call(document.getElementsByTagName('script')).some(function (x) {
+        return x.type === 'application/x-razor-js' &&
+          x.getAttribute('data-view-id') === id &&
+          (script = x);
+      });
+
+      if (script) {
+        template = views['~/' + id] = Razor.compile(script.innerHTML, page);
+      }
+    }
+    return template;
+  }
+
+  return { view: view, compile: compile, parse: parse, render: function (markup, model, page) { return compile(markup, page)(model); } };
 })();
