@@ -19,7 +19,7 @@
         <span class="paragraph">@model.message</span>
         <div class="meta">@showDate()</div>
       </div>
-      @if (model.buttons && !$.isEmptyObject(model.buttons)){
+      @if (model.buttons){
         <div class="buttons"></div>
       }
     </div>

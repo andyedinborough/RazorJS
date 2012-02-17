@@ -166,7 +166,7 @@ var Razor = (function () {
     }
   });
 
-  var _function_template = 'var writer = []; \r\nfunction write(txt){ writer.push(txt); }\r\nwith(this){\r\n#1\r\n#2\r\n#0\r\n}\r\nreturn writer.join("");';
+  var _function_template = 'var page = this, writer = []; \r\nfunction write(txt){ writer.push(txt); }\r\nwith(page){\r\n#1\r\n#2\r\n#0\r\n}\r\nreturn writer.join("");';
   function parse(template, optimize) {
     var rdr = new Reader(template),
       level = arguments[1] || 0, mode = arguments[2] || 0,
@@ -265,7 +265,7 @@ var Razor = (function () {
         } else if (a.type == 1 && b.type === 1) {
           a.code += '+(' + b.code + ')';
         } else if (a.type === 1 && b.type === 2) {
-          if (last(a.code) === '"') 
+          if (last(a.code) === '"')
             a.code = a.code.substr(0, a.code.length - 1);
           else a.code += '+"';
           a.code += doubleEncode(b.code) + '"';
@@ -283,10 +283,17 @@ var Razor = (function () {
 
     if (level > 0) return cmds;
     template = cmds.join('\r\n');
-    return _function_template
+    template = _function_template
         .replace('#0', template)
-        .replace('#1', helpers.join('\r\n'))
-        .replace('#2', sections.join('\r\n'));
+        .replace('#1', helpers.map(returnEmpty).join('\r\n'))
+        .replace('#2', sections.map(returnEmpty).join('\r\n'));
+    console.log(template);
+    return template;
+  }
+
+  function returnEmpty(func) {
+    var i = func.indexOf('{');
+    return func.substr(0, i + 1) + ' with (page) {\r\n' + func.substring(i + 1, func.lastIndexOf('}')) + '; return ""; } }';
   }
 
   function doubleEncode(txt) {
