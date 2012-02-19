@@ -1,9 +1,9 @@
-﻿/*global window */
+﻿/*global window, exports */
 /*jshint curly: false, evil: true */
-var Razor = (function () {
+var Razor = (function () {  
   'use strict';
-  var Reader = window.Reader = function () {
-
+  var global = Function('return this')();
+  var Reader = function () {
     var reader = function (text) {
       this.text = (text || '') + '';
       this.position = -1;
@@ -287,7 +287,6 @@ var Razor = (function () {
         .replace('#0', template)
         .replace('#1', helpers.map(returnEmpty).join('\r\n'))
         .replace('#2', sections.map(returnEmpty).join('\r\n'));
-    console.log(template);
     return template;
   }
 
@@ -328,19 +327,28 @@ var Razor = (function () {
   function view(id, page) {
     var template = views['~/' + id];
     if (!template) {
-      var script;
-      [ ].slice.call(window.document.getElementsByTagName('script')).some(function (x) {
-        return x.type === 'application/x-razor-js' &&
-          x.getAttribute('data-view-id') === id &&
-          (script = x);
-      });
-
+      var script = Razor.findView(id);
       if (script) {
-        template = views['~/' + id] = Razor.compile(script.innerHTML, page);
+        template = views['~/' + id] = Razor.compile(script, page);
       }
     }
     return template;
   }
+  
+  function findViewInDocument(viewName) {
+    var script;
+    [ ].slice.call(global.document.getElementsByTagName('script')).some(function (x) {
+      return x.type === 'application/x-razor-js' &&
+        x.getAttribute('data-view-id') === id &&
+        (script = x);
+    });  
+    if(script) return script.innerHTML;
+  }
+ 
 
-  return { view: view, compile: compile, parse: parse, render: function (markup, model, page) { return compile(markup, page)(model); } };
+  return { 
+    view: view, compile: compile, parse: parse, findView: global.document ? findViewInDocument : null,
+    render: function (markup, model, page) { return compile(markup, page)(model); } 
+  };
 })();
+if(module.exports) module.exports = Razor;
