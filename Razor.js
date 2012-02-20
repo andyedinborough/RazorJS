@@ -299,17 +299,6 @@ var Razor = (function () {
     return txt.split('\r').join('\\r').split('\n').join('\\n').split('"').join('\\"');
   }
 
-  function extend(a) {
-    for (var i = 1, ii = arguments.length; i < ii; i++) {
-      var b = arguments[i];
-      if (b)
-        for (var key in b)
-          if (b.hasOwnProperty(key))
-            a[key] = b[key];
-    }
-    return a;
-  }
-
   function compile(code, page, optimize) {
     var func, parsed = parse(code, optimize);
     try {
@@ -323,31 +312,101 @@ var Razor = (function () {
     };
   }
 
+  function extend(a) {
+    for (var i = 1, ii = arguments.length; i < ii; i++) {
+      var b = arguments[i];
+      if (b)
+        for (var key in b)
+          if (b.hasOwnProperty(key))
+            a[key] = b[key];
+    }
+    return a;
+  }
+   
+  function Deferred(){ 
+    if(!(this instanceof Deferred)) return new Deferred();
+    var dq = [], aq = [], fq = [], state = 0, dfd = this, args,
+      process = function(arr, run){
+        var cb;
+        while(run && (cb = arr.shift()))
+          cb.apply(dfd, args);
+      }
+    
+    extend(dfd, {      
+      done: function(cb){
+        if(cb) dq.push(cb);
+        process(dq, state === 1);
+        process(aq, state !== 0);
+        return dfd;
+      }, 
+      always: function(cb){
+        aq.push(cb);
+        process(aq, state !== 0);
+        return dfd;
+      }, 
+      fail: function(cb){
+        if(cb) fq.push(cb);
+        process(fq, state === -1);
+        process(aq, state !== 0);  
+        return dfd; 
+      },
+      resolve: function(){
+        args = arguments;
+        if(state === 0) state = 1;
+        return dfd.done();
+      },
+      reject: function(){
+        args = arguments;
+        if(state === 0) state = -1;
+        return dfd.fail();
+      }
+    });
+  }
+  
   var views = {};
   function view(id, page) {
-    var template = views['~/' + id];
+    var template = views['~/' + id], dfd = Deferred();
     if (!template) {
-      var script = Razor.findView(id);
-      if (script) {
-        template = views['~/' + id] = Razor.compile(script, page);
-      }
-    }
-    return template;
+      Razor.findView(id)
+        .done(function(script){
+          if (script) {
+            template = views['~/' + id] = Razor.compile(script, page);
+          }
+          dfd.resolve(template);
+        });
+    } else dfd.resolve(template);
+    return dfd;
   }
   
   function findViewInDocument(viewName) {
-    var script;
+    var script, dfd = Deferred();
     [ ].slice.call(global.document.getElementsByTagName('script')).some(function (x) {
       return x.type === 'application/x-razor-js' &&
         x.getAttribute('data-view-id') === id &&
         (script = x);
     });  
-    if(script) return script.innerHTML;
+    dfd.resolve(script ? script.innerHTML : undefined);
+    return dfd;
   }
- 
+  
+  function findViewInFileSystem(viewName) {
+    var fs = require('fs'), dfd = Deferred();
+    if(viewName.substring(viewName.lastIndexOf('.')) !== '.jshtml')
+      viewName += '.jshtml';
+      
+    fs.readFile(viewName, 'ascii', function(err, data){
+      if(err) {
+        console.error("Could not open file: %s", err);
+        process.exit(1);
+      }
+      
+      dfd.resolve(data.toString('ascii'));
+    });
+    return dfd;
+  }
 
   return { 
-    view: view, compile: compile, parse: parse, findView: global.document ? findViewInDocument : null,
+    view: view, compile: compile, parse: parse, findView: global.document ? findViewInDocument : findViewInFileSystem,
     render: function (markup, model, page) { return compile(markup, page)(model); } 
   };
 })();
