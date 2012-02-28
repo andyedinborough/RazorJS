@@ -402,7 +402,7 @@
   }
 
   function findViewInFileSystem(viewName) {
-    var fs = global.require('fs'), dfd = deferred();
+    var fs = module.require('fs'), dfd = deferred();
     if (viewName.substring(viewName.lastIndexOf('.')) !== '.jshtml')
       viewName += '.jshtml';
 
@@ -411,14 +411,15 @@
         console.error("Could not open file: %s", err);
         global.process.exit(1);
       }
-
       dfd.resolve(data.toString('ascii'));
     });
     return dfd;
   }
 
-  global[global.exports ? 'exports' : 'Razor'] = Razor = {
+  Razor = {
     view: view, compile: compile, parse: parse, findView: global.document ? findViewInDocument : findViewInFileSystem,
     render: function (markup, model, page) { return compile(markup, page)(model); }
   };
+  if(module && module.exports) module.exports = Razor;
+  else global.Razor = Razor;
 })();
