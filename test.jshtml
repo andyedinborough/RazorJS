@@ -1,0 +1,6 @@
+<!doctype html>
+<html>
+<body>
+  Hello @model.name!
+</body>
+</html>
