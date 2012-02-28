@@ -1,8 +1,8 @@
 ﻿/*global window, exports */
 /*jshint curly: false, evil: true */
-var Razor = (function () {
+(function () {
   'use strict';
-  var global = new Function('return this')();
+  var Razor, global = new Function('return this')();
   var Reader = function () {
     var reader = function (text) {
       this.text = (text || '') + '';
@@ -417,9 +417,8 @@ var Razor = (function () {
     return dfd;
   }
 
-  return {
+  global[global.exports ? 'exports' : 'Razor'] = Razor = {
     view: view, compile: compile, parse: parse, findView: global.document ? findViewInDocument : findViewInFileSystem,
     render: function (markup, model, page) { return compile(markup, page)(model); }
   };
 })();
-if (module.exports) module.exports = Razor;

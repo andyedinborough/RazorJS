@@ -1,38 +1,43 @@
 <!doctype html>
 <html>
+<head>
+  <link href="http://code.jquery.com/qunit/qunit-git.css" rel="stylesheet" />
+</head>
 <body>
+  <h1 id="qunit-header">Razor</h1>
+  <h2 id="qunit-banner"></h2>
+  <div id="qunit-testrunner-toolbar"></div>
+  <h2 id="qunit-userAgent"></h2>
+  <ol id="qunit-tests"></ol>
+
+  <script src="http://code.jquery.com/jquery-latest.js"></script>
+  <script src="http://code.jquery.com/qunit/qunit-git.js"></script>
   <script src="Razor.js"></script>
-  <script>
-    function equal(a, b, description) {
-      if(a == b) {
-        console.info('Pass: ' + description);    
-      } else {
-        console.error('FAIL: ' + description + '; "' + a + '" should equal "' + b + '"');
-      }  
-    }
-    var _started;
-    function start(){
-      _started = Date.now();
-    }
-    function stop(){
-      var stopped = Date.now();
-      console.log('Completed in ' + (stopped - _started) + 'ms');
-    }
-    
-    start();
-    equal(Razor.compile('test')(), 'test', 'no razor');  
-    equal(Razor.compile('test@test.com')(), 'test@test.com', 'email address');      
-    equal(Razor.compile('test@@@(model.test).com')({ test: 'test' }), 'test@test.com', 'explicit code');      
-    equal(Razor.compile('hello @model.name')({ name: 'world' }), 'hello world', 'model');    
-    equal(Razor.compile('hello @model.name[0]')({ name: 'world' }), 'hello w', 'model w/ indexers');
-    equal(Razor.compile('hello @model.name("world")')({ name: function(n){ return n; } }), 'hello world', 'model w/ method');
-    equal(Razor.compile('te@*FAIL*@st')(), 'test', 'comment');
-    equal(Razor.compile('@if(model.name){ @model.name }')({ name: 'test' }), 'test', 'if statement');
-    equal(Razor.compile('@if(!model.name){ @fail(); } else { @model.name; }')({ name: 'test' }), 'test', 'if-else statement');
-    equal(Razor.compile('@if(!model.name){ @:test }')({}), 'test', 'text-mode');
-    equal(Razor.compile('@helper test(){ @:test }@test()')(), 'test', 'helper');    
-    stop();
-    
+  <script>     
+      test('Basic Parsing', function(){;
+        equal(Razor.compile('test')(), 'test', 'no razor');  
+        equal(Razor.compile('test@test.com')(), 'test@test.com', 'email address');      
+        equal(Razor.compile('test@@@(model.test).com')({ test: 'test' }), 'test@test.com', 'explicit code');      
+        equal(Razor.compile('hello @model.name')({ name: 'world' }), 'hello world', 'model');    
+        equal(Razor.compile('hello @model.name[0]')({ name: 'world' }), 'hello w', 'model w/ indexers');
+        equal(Razor.compile('hello @model.name("world")')({ name: function(n){ return n; } }), 'hello world', 'model w/ method');
+        equal(Razor.compile('te@*FAIL*@st')(), 'test', 'comment');
+        equal(Razor.compile('@if(model.name){ @model.name }')({ name: 'test' }), 'test', 'if statement');
+        equal(Razor.compile('@if(!model.name){ @fail(); } else { @model.name; }')({ name: 'test' }), 'test', 'if-else statement');
+        equal(Razor.compile('@if(!model.name){ @:test }')({}), 'test', 'text-mode');
+        equal(Razor.compile('@helper test(){ @:test }@test()')(), 'test', 'helper');    
+      });
+      
+      asyncTest('Views', function(){
+        Razor.view('test')
+          .done(function(view){     
+            equal(view({ name: 'world' }).trim(), 'Hello world', 'basic "hello world"');
+            start();          
+          });
+      });
+  </script>
+  <script type="application/x-razor-js" data-view-id="test">  
+    Hello @model.name
   </script>
 </body>
 </html>
