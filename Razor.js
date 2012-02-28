@@ -11,12 +11,14 @@
     };
 
     var chunk = reader.Chunk = function (value, next) {
-      if (!this || this.length !== 0) return new reader.Chunk(value, next);
+      if (!(this instanceof chunk)) return new reader.Chunk(value, next);
       this.value = value || ''; this.next = next || '';
       this.length = (this.value + this.next).length;
     };
-    reader.Chunk.prototype.length = 0;
-    reader.Chunk.prototype.toString = function () { return this.value + this.next + ''; };
+    extend(reader.Chunk.prototype, {
+      length: 0,
+      toString: function () { return this.value + this.next + ''; }
+    });
 
     reader.prototype.read = function (len) {
       var value = this.peek(len);
@@ -152,7 +154,7 @@
   };
 
   var cmd = function Cmd(code, type) {
-    if (!this || this.type !== 0) return new Cmd(code, type);
+    if (!(this instanceof cmd)) return new Cmd(code, type);
     this.code = code || '';
     this.type = type || 0;
   };
@@ -267,7 +269,7 @@
       } else if (mode === 0 && chunk.next) cmds.push('@', 2);
     }
 
-    if (optimize !== false) {
+    if (false && optimize !== false) {
       cmds.reduce(function (a, b) {
         if (a.type === 2 && b.type === 2) {
           a.code += b.code;
@@ -294,11 +296,14 @@
     }
 
     if (level > 0) return cmds;
+    var original = template;
     template = cmds.join('\r\n');
     template = _function_template
         .replace('#0', template)
         .replace('#1', helpers.map(returnEmpty).join('\r\n'))
         .replace('#2', sections.map(returnEmpty).join('\r\n'));
+
+    console.log(original, template);
     return template;
   }
 
@@ -375,30 +380,38 @@
     });
   };
 
-  var views = {};
+  var views = {}, async = false;
   function view(id, page) {
-    var template = views['~/' + id], dfd = deferred();
+    var template = views['~/' + id];
     if (!template) {
-      Razor.findView(id)
-        .done(function (script) {
+      var result = Razor.findView(id);
+      if (result instanceof deferred) {
+        async = true;
+        var dfd = deferred();
+        result.done(function (script) {
           if (script) {
             template = views['~/' + id] = Razor.compile(script, page);
           }
           dfd.resolve(template);
         });
-    } else dfd.resolve(template);
-    return dfd;
+        return dfd;
+      } else if (result) {
+        return views['~/' + id] = Razor.compile(result, page);
+      }
+    } else if (async) {
+      return deferred().resolve(template);
+    } else return template;
   }
 
   function findViewInDocument(id) {
-    var script, dfd = deferred();
-    [ ].slice.call(global.document.getElementsByTagName('script')).some(function (x) {
-      return x.type === 'application/x-razor-js' &&
-        x.getAttribute('data-view-id') === id &&
-        (script = x);
-    });
-    dfd.resolve(script ? script.innerHTML : undefined);
-    return dfd;
+    var script;
+    [ ].slice.call(global.document.getElementsByTagName('script'))
+      .some(function (x) {
+        return x.type === 'application/x-razor-js' &&
+          x.getAttribute('data-view-id') === id &&
+          (script = x);
+      });
+    return script ? script.innerHTML : undefined;
   }
 
   function findViewInFileSystem(viewName) {
@@ -420,6 +433,6 @@
     view: view, compile: compile, parse: parse, findView: global.document ? findViewInDocument : findViewInFileSystem,
     render: function (markup, model, page) { return compile(markup, page)(model); }
   };
-  if(module && module.exports) module.exports = Razor;
+  if (typeof module !== 'undefined' && module.exports) module.exports = Razor;
   else global.Razor = Razor;
 })();

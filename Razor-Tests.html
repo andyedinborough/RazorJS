@@ -28,12 +28,8 @@
         equal(Razor.compile('@helper test(){ @:test }@test()')(), 'test', 'helper');    
       });
       
-      asyncTest('Views', function(){
-        Razor.view('test')
-          .done(function(view){     
-            equal(view({ name: 'world' }).trim(), 'Hello world', 'basic "hello world"');
-            start();          
-          });
+      test('Views', function(){
+        equal(Razor.view('test')({ name: 'world' }).trim(), 'Hello world', 'basic "hello world"');
       });
   </script>
   <script type="application/x-razor-js" data-view-id="test">  
