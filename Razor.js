@@ -1,4 +1,4 @@
-﻿/*global window, exports */
+﻿/*global window, module */
 /*jshint curly: false, evil: true */
 (function () {
   'use strict';
