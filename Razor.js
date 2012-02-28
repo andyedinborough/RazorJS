@@ -296,14 +296,11 @@
     }
 
     if (level > 0) return cmds;
-    var original = template;
     template = cmds.join('\r\n');
     template = _function_template
         .replace('#0', template)
         .replace('#1', helpers.map(returnEmpty).join('\r\n'))
         .replace('#2', sections.map(returnEmpty).join('\r\n'));
-
-    console.log(original, template);
     return template;
   }
 
