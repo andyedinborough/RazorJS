@@ -166,7 +166,7 @@ var Razor = (function () {
     }
   });
 
-  var _function_template = 'var page = this, writer = []; \r\nfunction write(txt){ writer.push(txt); }\r\nwith(page){\r\n#1\r\n#2\r\n#0\r\n}\r\nreturn writer.join("");';
+  var _function_template = 'var page = this, writer = []; \r\nfunction write(txt){ writer.push(txt); }\r\n#1\r\n#2\r\nwith(page){\r\n#0\r\n}\r\nreturn writer.join("");';
   function parse(template, optimize) {
     var rdr = new Reader(template),
       level = arguments[1] || 0, mode = arguments[2] || 0,
@@ -211,7 +211,18 @@ var Razor = (function () {
 
       } else if (peek === '{') {
         block = rdr.readBlock('{', '}');
-        cmds.push(parse(block, level + 1, 1));
+        cmds.push(parse(block.substr(0, block.length - 1), level + 1, 1).join('\n') + '}');
+
+      } else if (peek === ':' && mode === 1) {
+        block = rdr.readUntil('\n', '@');
+        while (block.next === '@' && rdr.peek(1) === '@') {
+          var temp = rdr.readUntil('\n', '@');
+          block.value += temp.value;
+          block.next = temp.next;
+        }
+        block.value = block.value.substr(1);
+        cmds.push(block.value.match(/(.*?)\s*$/)[1], 2);
+        cmds.push(block.value.match(/\s*$/)[0]||'', 0);
 
       } else if (
           (peek === 'i' && rdr.peek(2) === 'if') ||
@@ -234,9 +245,10 @@ var Razor = (function () {
           }
         }
 
-        if (peek === 'h') helpers.push('function ' + parse(block.substr(6).trim(), level + 1, 1).join('\r\n'));
-        else if (peek === 's') sections.push('function _section_' + parse(block.substr(7).trim(), level + 1, 1).join('\r\n'));
-        else cmds.push(parse(block, level + 1, 1));
+        var parsed = parse(block.substr(0, block.length - 1), level + 1, 1).join('\n') + '}';
+        if (peek === 'h') helpers.push('function ' + parsed.substr(7));
+        else if (peek === 's') sections.push('function _section_' + parsed.substr(8));
+        else cmds.push(parsed);
 
       } else if (peek && !rxValid.test(last(chunk.value))) {
         var remain, match;
@@ -287,7 +299,6 @@ var Razor = (function () {
         .replace('#0', template)
         .replace('#1', helpers.map(returnEmpty).join('\r\n'))
         .replace('#2', sections.map(returnEmpty).join('\r\n'));
-    console.log(template);
     return template;
   }
 
