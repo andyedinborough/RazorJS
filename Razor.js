@@ -1,4 +1,4 @@
-﻿/*global window, module */
+/*global window, module */
 /*jshint curly: false, evil: true */
 (function () {
   'use strict';
@@ -159,9 +159,8 @@
             if(value === null || value === undefined) value = '';
             if(value.__ishtml) return value;
             if(typeof value !== 'string') value += '';
-            value = value
-                .split('&').join('&amp;')
-                .split('<').join('&lt;');
+            value = encodeURIComponent(value)
+                .replace(/\%([0-9a-z]{2})/gi, '&#x$1;')
             return this.raw(value);
         },
         attributeEncode: function(value){
