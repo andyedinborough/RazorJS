@@ -153,6 +153,29 @@
     return ret;
   };
 
+ var basePage = {
+    html: {
+        encode: function(value){
+            if(value === null || value === undefined) value = '';
+            if(value.__ishtml) return value;
+            if(typeof value !== 'string') value += '';
+            value = value
+                .split('&').join('&amp;')
+                .split('<').join('&lt;');
+            return this.raw(value);
+        },
+        attributeEncode: function(value){
+            value = this.encode(value)
+                .replace('"').join('&quot;');
+            return this.raw(value);
+        },
+        raw: function(value){
+            value.__ishtml = true;
+            return value;
+        }
+    }
+ }; 
+ 
   var cmd = function Cmd(code, type) {
     if (!(this instanceof cmd)) return new Cmd(code, type);
     this.code = code || '';
@@ -163,12 +186,12 @@
     toString: function () {
       var code = this.code;
       if (this.type === 0) return code;
-      if (this.type === 2) code = "\"" + doubleEncode(code) + "\"";
+      if (this.type === 2) return "writeLiteral(\"" + doubleEncode(code) + "\");";
       return 'write(' + code + ');';
     }
   });
 
-  var _function_template = 'var page = this, writer = []; \r\nfunction write(txt){ writer.push(txt); }\r\n#1\r\n#2\r\nwith(page){\r\n#0\r\n}\r\nreturn writer.join("");';
+  var _function_template = 'var page = this, writer = []; \r\nfunction write(txt){ writeLiteral(page.html.encode(txt)); }\r\nfunction writeLiteral(txt){ writer.push(txt); }\r\n#1\r\n#2\r\nwith(page){\r\n#0\r\n}\r\nreturn writer.join("");';
   function parse(template, optimize) {
     var rdr = new Reader(template),
       level = arguments[1] || 0, mode = arguments[2] || 0,
@@ -321,7 +344,7 @@
       throw x.message + ': ' + parsed;
     }
     return function (model, page1) {
-      var ctx = extend({}, page, page1, { model: model });
+      var ctx = extend({}, basePage, page, page1, { model: model });
       return func.apply(ctx);
     };
   }
