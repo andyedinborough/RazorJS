@@ -317,14 +317,14 @@
             if(value === null || value === undefined) value = '';
             if(value.__ishtml) return value;
             if(typeof value !== 'string') value += '';
-            value = encodeURIComponent(value)
-                .replace(/\%([0-9a-z]{2})/gi, '&#x$1;');
+            value = value
+                .split('&').join('&amp;') 
+                .split('<').join('&lt;') 
+                .split('"').join('&quot;');
             return this.raw(value);
         },
         attributeEncode: function(value){
-            value = this.encode(value)
-                .replace('"').join('&quot;');
-            return this.raw(value);
+            return this.encode(value);
         },
         raw: function(value){
             value.__ishtml = true;
@@ -428,4 +428,7 @@
 
   // <import/>
 
+  global.console.log('ready',global);
+
+  return Razor;
 })();
