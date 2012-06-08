@@ -437,7 +437,5 @@
     return script ? script.innerHTML : undefined;
   };
 
-  global.console.log('ready',global);
-
   return Razor;
 })();
