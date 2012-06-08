@@ -3,20 +3,21 @@
 (function () {
   'use strict';
   var Razor, global = new Function('return this')();
-  var Reader = function () {
+  var Reader = (function () {
     var reader = function (text) {
       this.text = (text || '') + '';
       this.position = -1;
       this.length = this.text.length;
     };
 
-    var chunk = reader.Chunk = function (value, next) {
-      if (!this || this.length !== 0) return new reader.Chunk(value, next);
+    var Chunk = reader.Chunk = function (value, next) {
       this.value = value || ''; this.next = next || '';
       this.length = (this.value + this.next).length;
     };
-    reader.Chunk.prototype.length = 0;
-    reader.Chunk.prototype.toString = function () { return this.value + this.next + ''; };
+    extend(Chunk.prototype, {
+      length: 0,
+      toString: function () { return this.value + this.next + ''; }
+    });
 
     reader.prototype.read = function (len) {
       var value = this.peek(len);
@@ -64,7 +65,7 @@
             next = last(result);
             result = result.length > 0 ? result.substr(0, result.length - 1) : '';
           }
-          return chunk(result, next);
+          return new Chunk(result, next);
         }
 
         next = rdr.read();
@@ -73,7 +74,7 @@
         } else break;
       }
 
-      return chunk(result, next);
+      return new Chunk(result, next);
     }
 
     reader.prototype.readUntil = function (chars) {
@@ -87,7 +88,7 @@
     };
 
     return reader;
-  } ();
+  })();
 
   //Reader Extensions
   var rxValid = /^[a-z0-9\._]+/i;
@@ -126,7 +127,7 @@
       } else break;
     }
 
-    return Reader.Chunk(result, block.next);
+    return new Reader.Chunk(result, block.next);
   };
 
   Reader.prototype.readBlock = function (open, close, numOpen) {
@@ -151,13 +152,12 @@
     return ret;
   };
 
-  var cmd = function Cmd(code, type) {
-    if (!this || this.type !== 0) return new Cmd(code, type);
+  var Cmd = function(code, type) {
     this.code = code || '';
     this.type = type || 0;
   };
-  extend(cmd.prototype, {
-    type: 0,
+  extend(Cmd.prototype, {
+    type: 0, code: '',
     toString: function () {
       var code = this.code;
       if (this.type === 0) return code;
@@ -175,7 +175,7 @@
       return function (code, type) {
         if (typeof code === 'string') code = [code];
         code = code.map(function (x) {
-          return x instanceof cmd ? x : cmd(x, type);
+          return typeof x.code !== 'undefined' ? x : new Cmd(x, type);
         });
         push.apply(this, code);
       };
@@ -294,7 +294,7 @@
     }
 
     if (level > 0) return cmds;
-    template = cmds.join('\r\n');
+    template = cmds.map(function (x) { return Cmd.prototype.toString.apply(x); }).join('\r\n');
     template = _function_template
         .replace('#0', template)
         .replace('#1', helpers.map(returnEmpty).join('\r\n'))
@@ -316,6 +316,7 @@
     try {
       func = new Function(parsed);
     } catch (x) {
+      console.error(x.message + ': ' + parsed);
       throw x.message + ': ' + parsed;
     }
     return function (model, page1) {
@@ -375,30 +376,38 @@
     });
   };
 
-  var views = {};
+  var views = {}, async = false;
   function view(id, page) {
-    var template = views['~/' + id], dfd = deferred();
+    var template = views['~/' + id];
     if (!template) {
-      Razor.findView(id)
-        .done(function (script) {
+      var result = Razor.findView(id);
+      if (result instanceof deferred) {
+        async = true;
+        var dfd = deferred();
+        result.done(function (script) {
           if (script) {
             template = views['~/' + id] = Razor.compile(script, page);
           }
           dfd.resolve(template);
         });
-    } else dfd.resolve(template);
     return dfd;
+      } else if (result) {
+        return views['~/' + id] = Razor.compile(result, page);
+      }
+    } else if (async) {
+      return deferred().resolve(template);
+    } else return template;
   }
 
   function findViewInDocument(id) {
-    var script, dfd = deferred();
-    [ ].slice.call(global.document.getElementsByTagName('script')).some(function (x) {
+    var script;
+    [].slice.call(global.document.getElementsByTagName('script'))
+      .some(function (x) {
       return x.type === 'application/x-razor-js' &&
         x.getAttribute('data-view-id') === id &&
         (script = x);
     });
-    dfd.resolve(script ? script.innerHTML : undefined);
-    return dfd;
+    return script ? script.innerHTML : undefined;
   }
 
   function findViewInFileSystem(viewName) {
