@@ -428,7 +428,5 @@
 
   // <import/>
 
-  global.console.log('ready',global);
-
   return Razor;
 })();
