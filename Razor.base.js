@@ -1,4 +1,4 @@
-﻿/*global window, exports */
+/*global window, exports */
 /*jshint curly: false, evil: true */
 (function () {
   'use strict';
@@ -311,12 +311,17 @@
     return txt.split('\r').join('\\r').split('\n').join('\\n').split('"').join('\\"');
   }
 
+
+  var basePage = {
+    
+  };
+
   function compile(code, page, optimize) {
     var func, parsed = parse(code, optimize);
     try {
       func = new Function(parsed);
     } catch (x) {
-      console.error(x.message + ': ' + parsed);
+      global.console.error(x.message + ': ' + parsed);
       throw x.message + ': ' + parsed;
     }
     return function (model, page1) {
@@ -397,37 +402,13 @@
     } else if (async) {
       return deferred().resolve(template);
     } else return template;
-  }
-
-  function findViewInDocument(id) {
-    var script;
-    [].slice.call(global.document.getElementsByTagName('script'))
-      .some(function (x) {
-      return x.type === 'application/x-razor-js' &&
-        x.getAttribute('data-view-id') === id &&
-        (script = x);
-    });
-    return script ? script.innerHTML : undefined;
-  }
-
-  function findViewInFileSystem(viewName) {
-    var fs = global.require('fs'), dfd = deferred();
-    if (viewName.substring(viewName.lastIndexOf('.')) !== '.jshtml')
-      viewName += '.jshtml';
-
-    fs.readFile(viewName, 'ascii', function (err, data) {
-      if (err) {
-        console.error("Could not open file: %s", err);
-        global.process.exit(1);
-      }
-
-      dfd.resolve(data.toString('ascii'));
-    });
-    return dfd;
-  }
-
+  } 
+  
   global[global.exports ? 'exports' : 'Razor'] = Razor = {
-    view: view, compile: compile, parse: parse, findView: global.document ? findViewInDocument : findViewInFileSystem,
+    view: view, compile: compile, parse: parse, findView: null,
     render: function (markup, model, page) { return compile(markup, page)(model); }
   };
+
+  // <import/>
+
 })();
