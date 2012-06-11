@@ -25,37 +25,42 @@ function test(){
 }
 test();
 
-var ext = process.argv[2] || 'browser',
-  fs = require('fs'),
-  razorJs, razorExtJs,
-  razorJsFile = 'Razor.base.js',
-  razorExtJsFile = 'Razor.' + ext + '.js',
-  uglify = require('c:/users/andy/appdata/roaming/npm/node_modules/uglify-js'),
-  jshint = require('c:/users/andy/appdata/roaming/npm/node_modules/jshint'),
-  razorMinJs,
-  Razor, result;
+var ext, exts = (process.argv[2] || 'browser,node').split(','),
+  fs = require('fs');
 
-fs.mkdir('bin');  
-fs.mkdir('bin/' + ext);  
-razorJs = fs.readFileSync(razorJsFile, 'utf8');
-razorExtJs = fs.readFileSync(razorExtJsFile, 'utf8');
+while((ext = exts.shift())) {
+  var razorJs, razorExtJs,
+    razorJsFile = 'Razor.base.js',
+    razorExtJsFile = 'Razor.' + ext + '.js',
+    uglify = require('uglify-js'),
+    jshint = require('jshint'),
+    razorMinJs,
+    Razor, result;
 
-(function(){
-  var args = [].slice.call(arguments), arg;
-  while((arg = args.shift())){
-    if(!jshint.JSHINT(arg.code)){
-      var errors = jshint.JSHINT.errors, error;
-      while((error = errors.shift())){
-        console.warn(arg.file + ' (' + error.line + ',' + error.character + '): ' +
-          error.reason + '\r\n\t' + error.evidence);
+  fs.mkdir('bin');  
+  fs.mkdir('bin/' + ext);  
+  razorJs = fs.readFileSync(razorJsFile, 'utf8');
+  razorExtJs = fs.readFileSync(razorExtJsFile, 'utf8');
+
+  (function(){
+    var args = [].slice.call(arguments), arg;
+    while((arg = args.shift())){
+      if(!jshint.JSHINT(arg.code)){
+        var errors = jshint.JSHINT.errors, error;
+        while((error = errors.shift())){
+          console.warn(arg.file + ' (' + error.line + ',' + error.character + '): ' +
+            error.reason + '\r\n\t' + error.evidence);
+        }
       }
     }
-  }
 
-})({ code: razorJs, file: razorJsFile}, {code: razorExtJs, file: razorExtJsFile });
+  })({ code: razorJs, file: razorJsFile}, {code: razorExtJs, file: razorExtJsFile });
 
-razorJs = customs(razorJs, razorExtJs);
-fs.writeFileSync('bin/' + ext + '/Razor.js', razorJs);
+  razorJs = customs(razorJs, razorExtJs);
+  fs.writeFileSync('bin/' + ext + '/Razor.js', razorJs);
+  console.log('bin/' + ext + '/Razor.js');
 
-razorMinJs = uglify(razorJs);
-fs.writeFileSync('bin/' + ext + '/Razor.min.js', razorMinJs);
+  razorMinJs = uglify(razorJs);
+  fs.writeFileSync('bin/' + ext + '/Razor.min.js', razorMinJs);
+  console.log('bin/' + ext + '/Razor.min.js');
+}
