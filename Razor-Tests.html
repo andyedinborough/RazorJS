@@ -28,6 +28,9 @@
         equal(Razor.compile('@helper test(){ @:test }@test()')(), 'test', 'helper');    
       });
       
+      test('Views', function(){
+        equal(Razor.view('test')({ name: 'world' }).trim(), 'Hello world', 'basic "hello world"');
+      });
   </script>
   <script type="application/x-razor-js" data-view-id="test">  
     Hello @model.name

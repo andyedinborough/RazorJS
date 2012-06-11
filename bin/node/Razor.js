@@ -442,7 +442,5 @@
     return dfd;
   };
 
-  global.console.log('ready',global);
-
   return Razor;
 })();
