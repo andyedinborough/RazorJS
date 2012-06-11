@@ -1,8 +1,9 @@
-/*global window, exports */
+/*global module, deferred, console, process, require */
 /*jshint curly: false, evil: true */
 (function () {
-  'use strict';
-  var Razor, global = new Function('return this')();
+  'use strict'; 
+
+  var Razor;
   var Reader = (function () {
     var reader = function (text) {
       this.text = (text || '') + '';
@@ -166,7 +167,10 @@
     }
   });
 
-  var _function_template = 'var page = this, writer = []; \r\nfunction write(txt){ writeLiteral(page.html.encode(txt)); }\r\nfunction writeLiteral(txt){ writer.push(txt); }\r\n#1\r\n#2\r\nwith(page){\r\n#0\r\n}\r\nreturn writer.join("");';
+  var _function_template = 'var page = this, writer = [], model = page.model, html = page.html; \r\n' + 
+    'function write(txt){ writeLiteral(page.html.encode(txt)); }\r\n' + 
+    'function writeLiteral(txt){ writer.push(txt); }\r\n' + 
+    '#1\r\n#2\r\n#0\r\nreturn writer.join("");';
   function parse(template, optimize) {
     var rdr = new Reader(template),
       level = arguments[1] || 0, mode = arguments[2] || 0,
@@ -265,33 +269,7 @@
         }
         if (block) cmds.push(block, 1);
       } else if (mode === 0 && chunk.next) cmds.push('@', 2);
-    }
-
-    if (optimize !== false) {
-      cmds.reduce(function (a, b) {
-        if (a.type === 2 && b.type === 2) {
-          a.code += b.code;
-        } else if (a.type === 2 && b.type === 1) {
-          a.code = '"' + doubleEncode(a.code) + '"+(' + b.code + ')';
-          a.type = 1;
-        } else if (a.type == 1 && b.type === 1) {
-          a.code += '+(' + b.code + ')';
-        } else if (a.type === 1 && b.type === 2) {
-          if (last(a.code) === '"')
-            a.code = a.code.substr(0, a.code.length - 1);
-          else a.code += '+"';
-          a.code += doubleEncode(b.code) + '"';
-        } else {
-          return b;
-        }
-
-        b.code = '';
-        return a;
-      });
-      cmds = cmds.filter(function (a) {
-        return !!a.code;
-      });
-    }
+    } 
 
     if (level > 0) return cmds;
     template = cmds.map(function (x) { return Cmd.prototype.toString.apply(x); }).join('\r\n');
@@ -304,34 +282,36 @@
 
   function returnEmpty(func) {
     var i = func.indexOf('{');
-    return func.substr(0, i + 1) + ' with (page) {\r\n' + func.substring(i + 1, func.lastIndexOf('}')) + '; return ""; } }';
+    return func.substr(0, i + 1) + '\r\n' + func.substring(i + 1, func.lastIndexOf('}')) + '; return ""; }';
   }
 
   function doubleEncode(txt) {
     return txt.split('\r').join('\\r').split('\n').join('\\n').split('"').join('\\"');
   }
 
- var basePage = {
-    html: {
-        encode: function(value){
-            if(value === null || value === undefined) value = '';
-            if(value.__ishtml) return value;
-            if(typeof value !== 'string') value += '';
-            value = value
-                .split('&').join('&amp;') 
-                .split('<').join('&lt;') 
-                .split('"').join('&quot;');
-            return this.raw(value);
-        },
-        attributeEncode: function(value){
-            return this.encode(value);
-        },
-        raw: function(value){
-            value.__ishtml = true;
-            return value;
-        }
+  function htmlString(value) { return { toString: function(){ return value; }, isHtmlString: true }; }
+
+  var htmlHelper = {
+    encode: function(value){
+      if(value === null || value === undefined) value = '';
+      if(value.isHtmlString) return value;
+      if(typeof value !== 'string') value += '';
+      value = value
+        .split('&').join('&amp;') 
+        .split('<').join('&lt;') 
+        .split('>').join('&gt;') 
+        .split('"').join('&quot;');
+      return htmlHelper.raw(value);
+    },
+    attributeEncode: function(value){
+      return htmlHelper.encode(value);
+    },
+    raw: function(value){
+      return htmlString(value);
     }
- }; 
+  }, basePage = {
+    html: htmlHelper
+  }; 
 
   function compile(code, page, optimize) {
     var func, parsed = parse(code, optimize);
@@ -421,26 +401,26 @@
     } else return template;
   } 
   
-  global[global.exports ? 'exports' : 'Razor'] = Razor = {
+  Razor = {
     view: view, compile: compile, parse: parse, findView: null,
+    basePage: basePage,
     render: function (markup, model, page) { return compile(markup, page)(model); }
   };
-
+  
   Razor.findView = function findViewInFileSystem(viewName) {
-    var fs = global.require('fs'), dfd = deferred();
+    var fs = require('fs'), dfd = deferred();
     if (viewName.substring(viewName.lastIndexOf('.')) !== '.jshtml')
       viewName += '.jshtml';
 
     fs.readFile(viewName, 'ascii', function (err, data) {
       if (err) {
-        global.console.error("Could not open file: %s", err);
-        global.process.exit(1);
+        console.error("Could not open file: %s", err);
+        process.exit(1);
       }
 
       dfd.resolve(data.toString('ascii'));
     });
     return dfd;
   };
-
-  return Razor;
-})();
+  
+})(module);

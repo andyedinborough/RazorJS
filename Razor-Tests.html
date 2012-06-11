@@ -31,6 +31,13 @@
       test('Views', function(){
         equal(Razor.view('test')({ name: 'world' }).trim(), 'Hello world', 'basic "hello world"');
       });
+
+      test('Html Encoding', function(){
+        var encode = Razor.basePage.html.encode;
+        equal(encode('<test>')+'', '&lt;test&gt;', 'encodes')
+        equal(encode(encode('<test>'))+'', '&lt;test&gt;', 'won\'t double-encode')
+        equal(Razor.compile('hello @html.raw("<test>")')(), 'hello <test>', 'won\'t encode for html.raw()');    
+      });
   </script>
   <script type="application/x-razor-js" data-view-id="test">  
     Hello @model.name

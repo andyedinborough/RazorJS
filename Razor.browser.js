@@ -1,8 +1,21 @@
-/*global global, Razor */
+/*global window, Array */
 /*jshint curly: false, evil: true */
-(function () {
+(function (global) {
   'use strict';
-  // <export>
+  
+  if(!Array.prototype.map) {
+    Array.prototype.map = function (fn, thisObj) {
+      var scope = thisObj || global;
+      var a = [];
+      for (var i = 0, j = this.length; i < j; ++i) {
+        a.push(fn.call(scope, this[i], i, this));
+      }
+      return a;
+    };
+  }
+
+  var Razor;
+  // <import/>
   
   Razor.findView = function findViewInDocument(id) {
     var script;
@@ -14,6 +27,7 @@
     });
     return script ? script.innerHTML : undefined;
   };
+
+  global.Razor = Razor;
   
-  // </export>
-})();
+})(window);
