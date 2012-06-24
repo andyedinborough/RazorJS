@@ -309,7 +309,10 @@
     },
     raw: function(value){
       return htmlString(value);
-    }
+    },
+		renderPartial: function(view, model) {
+			return this.raw(Razor.view(view)(model));
+		}
   }, basePage = {
     html: htmlHelper
   }; 
