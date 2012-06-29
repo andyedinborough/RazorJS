@@ -421,15 +421,16 @@
     render: function (markup, model, page) { return compile(markup, page)(model); }
   };
 
+	var scripts = global.document.getElementsByTagName('script');
 	Razor.findView = function findViewInDocument(id) {
-		var script, scripts = [];
-		[ ].push.apply(scripts, global.document.getElementsByTagName('script'));
-		scripts.some(function(x) {
-				return x.type === 'application/x-razor-js' &&
-				x.getAttribute('data-view-id') === id &&
-				(script = x);
-			});
-		return script ? script.innerHTML : undefined;
+		var script;
+		for(var i = 0, ii = scripts.length; i<ii; i++){
+			script = scripts[i];	
+			if(script.type === 'application/x-razor-js' &&
+				script.getAttribute('data-view-id') === id) {
+					return script.innerHTML;
+				}
+		}
 	};
 
 	global.Razor = Razor;
