@@ -1,21 +1,21 @@
 /*global window, Array */
 /*jshint curly: false, evil: true */
-(function (global) {
-  'use strict';
-  
-  if(!Array.prototype.map) {
-    Array.prototype.map = function (fn, thisObj) {
-      var scope = thisObj || global;
-      var a = [];
-      for (var i = 0, j = this.length; i < j; ++i) {
-        a.push(fn.call(scope, this[i], i, this));
-      }
-      return a;
-    };
-  }
+(function(global) {
+	'use strict';
 
-  var Razor;
-  var Reader = (function () {
+	if(!Array.prototype.map) {
+		Array.prototype.map = function(fn, thisObj) {
+			var scope = thisObj || global;
+			var a = [];
+			for(var i = 0, j = this.length; i < j; ++i) {
+				a.push(fn.call(scope, this[i], i, this));
+			}
+			return a;
+		};
+	}
+
+	var Razor;
+	var Reader = (function () {
     var reader = function (text) {
       this.text = (text || '') + '';
       this.position = -1;
@@ -319,7 +319,10 @@
     },
     raw: function(value){
       return htmlString(value);
-    }
+    },
+		renderPartial: function(view, model) {
+			return this.raw(Razor.view(view)(model));
+		}
   }, basePage = {
     html: htmlHelper
   }; 
@@ -417,18 +420,19 @@
     basePage: basePage,
     render: function (markup, model, page) { return compile(markup, page)(model); }
   };
-  
-  Razor.findView = function findViewInDocument(id) {
-    var script;
-    [].slice.call(global.document.getElementsByTagName('script'))
-      .some(function (x) {
-      return x.type === 'application/x-razor-js' &&
-        x.getAttribute('data-view-id') === id &&
-        (script = x);
-    });
-    return script ? script.innerHTML : undefined;
-  };
 
-  global.Razor = Razor;
-  
+	var scripts = global.document.getElementsByTagName('script');
+	Razor.findView = function findViewInDocument(id) {
+		var script;
+		for(var i = 0, ii = scripts.length; i<ii; i++){
+			script = scripts[i];	
+			if(script.type === 'application/x-razor-js' &&
+				script.getAttribute('data-view-id') === id) {
+					return script.innerHTML;
+				}
+		}
+	};
+
+	global.Razor = Razor;
+
 })(window);
