@@ -13,34 +13,35 @@
   <script src="http://code.jquery.com/jquery-latest.js"></script>
   <script src="http://code.jquery.com/qunit/qunit-git.js"></script>
   <script src="bin/browser/Razor.js"></script>
-  <script>     
-      test('Basic Parsing', function(){;
-        equal(Razor.compile('test')(), 'test', 'no razor');  
-        equal(Razor.compile('test@test.com')(), 'test@test.com', 'email address');      
-        equal(Razor.compile('test@@@(model.test).com')({ test: 'test' }), 'test@test.com', 'explicit code');      
-        equal(Razor.compile('hello @model.name')({ name: 'world' }), 'hello world', 'model');    
-        equal(Razor.compile('hello @model.name[0]')({ name: 'world' }), 'hello w', 'model w/ indexers');
-        equal(Razor.compile('hello @model.name("world")')({ name: function(n){ return n; } }), 'hello world', 'model w/ method');
-        equal(Razor.compile('te@*FAIL*@st')(), 'test', 'comment');
-        equal(Razor.compile('@if(model.name){ @model.name }')({ name: 'test' }), 'test', 'if statement');
-        equal(Razor.compile('@if(!model.name){ @fail(); } else { @model.name; }')({ name: 'test' }), 'test', 'if-else statement');
-        equal(Razor.compile('@if(!model.name){ @:test }')({}), 'test', 'text-mode');
-        equal(Razor.compile('@helper test(){ @:test }@test()')(), 'test', 'helper');    
-      });
-      
-      test('Views', function(){
-        equal(Razor.view('test')({ name: 'world' }).trim(), 'Hello world', 'basic "hello world"');
-        equal(Razor.view('test-partial')({ name: 'world' }).trim(), 'Hello world', 'renderPartial');
-        equal(Razor.view('test-helper')({}).trim(), '<div>Hello world</div>', 'complex helper');
-        equal(Razor.view('test-lt')({ id: -1 }).trim(), '<div>Ok!</div>', 'view contains "<"');
-      });
+  <script>
+    test('Basic Parsing', function() {
+    	equal(Razor.compile('test')(), 'test', 'no razor');
+    	equal(Razor.compile('test@test.com')(), 'test@test.com', 'email address');
+    	equal(Razor.compile('test@@@(model.test).com')({ test: 'test' }), 'test@test.com', 'explicit code');
+    	equal(Razor.compile('hello @model.name')({ name: 'world' }), 'hello world', 'model');
+    	equal(Razor.compile('hello @model.name[0]')({ name: 'world' }), 'hello w', 'model w/ indexers');
+    	equal(Razor.compile('hello @model.name("world")')({ name: function(n) { return n; } }), 'hello world', 'model w/ method');
+    	equal(Razor.compile('te@*FAIL*@st')(), 'test', 'comment');
+    	equal(Razor.compile('@if(model.name){ @model.name }')({ name: 'test' }), 'test', 'if statement');
+    	equal(Razor.compile('@if(!model.name){ @fail(); } else { @model.name; }')({ name: 'test' }), 'test', 'if-else statement');
+    	equal(Razor.compile('@if(!model.name){ @:test }')({}), 'test', 'text-mode');
+    	equal(Razor.compile('@helper test(){ @:test }@test()')(), 'test', 'helper');
+    	equal(Razor.compile('@for(var i = 0; i<1; i++){ @i }')().trim(), '0', 'for loop');
+    });
 
-      test('Html Encoding', function(){
-        var encode = Razor.basePage.html.encode;
-        equal(encode('<test>')+'', '&lt;test&gt;', 'encodes');
-        equal(encode(encode('<test>'))+'', '&lt;test&gt;', 'won\'t double-encode');
-        equal(Razor.compile('hello @html.raw("<test>")')(), 'hello <test>', 'won\'t encode for html.raw()');    
-      });
+    test('Views', function() {
+    	equal(Razor.view('test')({ name: 'world' }).trim(), 'Hello world', 'basic "hello world"');
+    	equal(Razor.view('test-partial')({ name: 'world' }).trim(), 'Hello world', 'renderPartial');
+    	equal(Razor.view('test-helper')({}).trim(), '<div>Hello world</div>', 'complex helper');
+    	equal(Razor.view('test-lt')({ id: -1 }).trim(), '<div>Ok!</div>', 'view contains "<"');
+    });
+
+    test('Html Encoding', function() {
+    	var encode = Razor.basePage.html.encode;
+    	equal(encode('<test>') + '', '&lt;test&gt;', 'encodes');
+    	equal(encode(encode('<test>')) + '', '&lt;test&gt;', 'won\'t double-encode');
+    	equal(Razor.compile('hello @html.raw("<test>")')(), 'hello <test>', 'won\'t encode for html.raw()');
+    });
   </script>
   <script type="application/x-razor-js" data-view-id="test">  
     Hello @model.name
