@@ -3,17 +3,6 @@
 (function(global) {
 	'use strict';
 
-	if(!Array.prototype.map) {
-		Array.prototype.map = function(fn, thisObj) {
-			var scope = thisObj || global;
-			var a = [];
-			for(var i = 0, j = this.length; i < j; ++i) {
-				a.push(fn.call(scope, this[i], i, this));
-			}
-			return a;
-		};
-	}
-
 	var Razor;
 	// <import/>
 

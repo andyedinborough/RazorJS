@@ -5,6 +5,103 @@
 
 	//<export>
 
+	function ifNative(func) {
+		if (func && func.toString().indexOf('[native code]') > -1)
+			return func;
+	}
+
+	var proxy = function (func) {
+		return function (obj, arg) { return func.apply(obj, [arg]); };
+	};
+
+	var each = proxy(ifNative(Array.prototype.forEach) || function (func, thisObj) {
+		var l = this.length, j = l, i, scope = thisObj || global;
+		while (j--) func.apply(scope, [this[(i = l - j - 1)], i]);
+	});
+
+	var map = proxy(ifNative(Array.prototype.map) || function (fn, thisObj) {
+		var scope = thisObj || global, a = [];
+		for (var i = 0, j = this.length; i < j; ++i) {
+			a.push(fn.call(scope, this[i], i, this));
+		}
+		return a;
+	});
+
+	var some = proxy(ifNative(Array.prototype.some) || function (fn, thisObj) {
+		var scope = thisObj || global;
+		for (var i = 0, j = this.length; i < j; ++i) {
+			if (fn.call(scope, this[i], i, this)) {
+				return true;
+			}
+		}
+		return false;
+	});
+
+	//Dear IE8: I hate you.
+	var specialKeys = 'toString valueOf'.split(' ');
+	var objectKeys = ifNative(Object.keys) || function (a) {
+		var ret = [];
+		for (var i in a)
+			if (a.hasOwnProperty(i))
+				ret.push(i);
+		each(specialKeys, function (key) {
+			if (a[key] !== Object.prototype[key])
+				ret.push(key);
+		});
+		return ret;
+	};
+
+	function extend(a) {
+		each(arguments, function (b, i) {
+			if (i === 0) return;
+			if (b)
+				each(objectKeys(b), function (key) {
+					a[key] = b[key];
+				});
+		});
+		return a;
+	}
+
+	var deferred = function Deferred() {
+		if (!(this instanceof Deferred)) return new Deferred();
+		var dq = [], aq = [], fq = [], state = 0, dfd = this, args,
+      process = function (arr, run) {
+				var cb;
+				while (run && (cb = arr.shift()))
+					cb.apply(dfd, args);
+      };
+
+		extend(dfd, {
+			done: function (cb) {
+				if (cb) dq.push(cb);
+				process(dq, state === 1);
+				process(aq, state !== 0);
+				return dfd;
+			},
+			always: function (cb) {
+				aq.push(cb);
+				process(aq, state !== 0);
+				return dfd;
+			},
+			fail: function (cb) {
+				if (cb) fq.push(cb);
+				process(fq, state === -1);
+				process(aq, state !== 0);
+				return dfd;
+			},
+			resolve: function () {
+				args = arguments;
+				if (state === 0) state = 1;
+				return dfd.done();
+			},
+			reject: function () {
+				args = arguments;
+				if (state === 0) state = -1;
+				return dfd.fail();
+			}
+		});
+	};
+
 	var Reader = (function () {
 		var reader = function (text) {
 			this.text = (text || '') + '';
@@ -60,7 +157,7 @@
 
 			while (true) {
 				cache.length = 0;
-				if (until === chars.some(predicate)) {
+				if (until === some(chars, predicate)) {
 					if (until) {
 						rdr.seek(l);
 					} else {
@@ -95,7 +192,7 @@
 	//Reader Extensions
 	var rxValid = /^[a-z0-9\._]+/i;
 	function last(str) {
-		return (str = (str || ''))[str.length - 1] || '';
+		return (str = (str || '')).substr(str.length - 1);
 	}
 
 	Reader.prototype.readWhitespace = function () {
@@ -179,7 +276,7 @@
 		cmds.push = (function (push) {
 			return function (code, type) {
 				if (typeof code === 'string') code = [code];
-				code = code.map(function (x) {
+				code = map(code, function (x) {
 					return typeof x.code !== 'undefined' ? x : new Cmd(x, type);
 				});
 				push.apply(this, code);
@@ -283,11 +380,11 @@
 		}
 
 		if (level > 0) return cmds;
-		template = cmds.map(function (x) { return Cmd.prototype.toString.apply(x); }).join('\r\n');
+		template = cmds.join('\r\n');
 		template = _function_template
         .replace('#0', template)
-        .replace('#1', helpers.map(returnEmpty).join('\r\n'))
-        .replace('#2', sections.map(returnEmpty).join('\r\n'));
+        .replace('#1', map(helpers, returnEmpty).join('\r\n'))
+        .replace('#2', map(sections, returnEmpty).join('\r\n'));
 		return template;
 	}
 
@@ -340,81 +437,6 @@
 			return func.apply(ctx);
 		};
 	}
-
-	function ifNative(func) {
-		if (func && func.toString().indexOf('[native code]') > -1)
-			return func;
-	}
-
-	var each = ifNative(Array.prototype.forEach) || function (func) {
-		var l = this.length, j = l, i;
-		while (j--) func.apply(this, [this[(i = l - j - 1)], i]);
-	};
-
-	//Dear IE8: I hate you.
-	var specialKeys = 'toString valueOf'.split(' ');
-	var objectKeys = ifNative(Object.keys) || function (a) {
-		var ret = [];
-		for (var i in a)
-			if (a.hasOwnProperty(i))
-				ret.push(i);
-		each.apply(specialKeys, [function (key) {
-			if (a[key] !== Object.prototype[key])
-				ret.push(key);
-		} ]);
-		return ret;
-	};
-
-	function extend(a) {
-		each.apply(arguments, [function (b, i) {
-			if (i === 0) return;
-			if (b)
-				each.apply(objectKeys(b), [function (key) {
-					a[key] = b[key];
-				} ]);
-		}]);
-		return a;
-	}
-
-	var deferred = function Deferred() {
-		if (!(this instanceof Deferred)) return new Deferred();
-		var dq = [], aq = [], fq = [], state = 0, dfd = this, args,
-      process = function (arr, run) {
-				var cb;
-				while (run && (cb = arr.shift()))
-					cb.apply(dfd, args);
-      };
-
-		extend(dfd, {
-			done: function (cb) {
-				if (cb) dq.push(cb);
-				process(dq, state === 1);
-				process(aq, state !== 0);
-				return dfd;
-			},
-			always: function (cb) {
-				aq.push(cb);
-				process(aq, state !== 0);
-				return dfd;
-			},
-			fail: function (cb) {
-				if (cb) fq.push(cb);
-				process(fq, state === -1);
-				process(aq, state !== 0);
-				return dfd;
-			},
-			resolve: function () {
-				args = arguments;
-				if (state === 0) state = 1;
-				return dfd.done();
-			},
-			reject: function () {
-				args = arguments;
-				if (state === 0) state = -1;
-				return dfd.fail();
-			}
-		});
-	};
 
 	var views = {}, async = false;
 	function view(id, page) {
