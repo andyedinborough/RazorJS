@@ -447,6 +447,7 @@
 		var template = views['~/' + id];
 		if (!template) {
 			var result = Razor.findView(id);
+			if (!result) return;
 			if (typeof result.done === 'function') {
 				async = true;
 				var dfd = deferred();
