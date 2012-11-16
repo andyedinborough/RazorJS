@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+<head>
+
+</head>
+<body> 
+
+  <script src="http://code.jquery.com/jquery-latest.js"></script>
+  <script src="bin/browser/Razor.js"></script>
+
+  <script>
+  	Razor.Cmd.prototype.toString = (function(toString) {
+  		return function(){
+  			if(this.type === 1) return 'this.asyncWrite(function(){ return (' + this.code + ');})';
+  			return toString.apply(this);
+  		};
+  	})(Razor.Cmd.prototype.toString);
+
+  	Razor.basePage.asyncWrite = function(delegate) {
+			var page = this, model = page.model, writer = page.writer, 
+				asyncs = writer.asyncs || (writer.asyncs = []);
+			if(writer.isDeferred === undefined) {
+				writer.isDeferred = typeof model.done === 'function';
+			}
+			if(writer.isDeferred) {
+				var id = asyncs.length;
+				asyncs.push(delegate);
+				writer.push(page.html.raw('<nobr data-async-id="'+id+'">'));
+			} else {
+				page.write(delegate());
+			}
+		};
+		function processAsyncs(elm, page, model) {
+			var writer = page.writer, asyncs = writer.asyncs;
+			$.each(model, function(k,v) { 
+				page.model[k] = v; 
+			});
+			elm.find('nobr[data-async-id]').each(function(){
+				var nobr = $(this), i = nobr.attr('data-async-id') >>> 0;
+				$(this).replaceWith(asyncs[i]());
+			});
+		}
+
+  	function equals(value, shouldBe, message) {
+  		if(value != shouldBe) throw message; 
+  	}
+  	var view = Razor.compile('Today is: @model.date');
+  	var model = { date: 'Tuesday'};
+
+  	equals(view(model), 'Today is: Tuesday', 'normal view works');
+
+  	var page = {writer:[]};
+  	var dfd = $.Deferred();
+  	var div = $('<div>').html(view(dfd, page));
+  	dfd.done(function(m){
+  		processAsyncs(div, page, m);
+  	});
+  	div.appendTo('body');
+  	setTimeout(function(){
+  		dfd.resolve(model);
+	  	equals(div.html(), 'Today is: Tuesday', 'O_o holy crap it worked');
+  	}, 1e3)
+
+  </script>
+</body>
+</html>

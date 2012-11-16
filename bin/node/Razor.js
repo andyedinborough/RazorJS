@@ -259,14 +259,12 @@
 		toString: function () {
 			var code = this.code;
 			if (this.type === 0) return code;
-			if (this.type === 2) return "writeLiteral(\"" + doubleEncode(code) + "\");";
-			return 'write(' + code + ');';
+			if (this.type === 2) return "page.writeLiteral(\"" + doubleEncode(code) + "\");";
+			return 'page.write(' + code + ');';
 		}
 	});
 
-	var _function_template = 'var page = this, writer = [], model = page.model, html = page.html; \r\n' +
-    'function write(txt){ writeLiteral(page.html.encode(txt)); }\r\n' +
-    'function writeLiteral(txt){ writer.push(txt); }\r\n' +
+	var _function_template = 'var page = this, writer = page.writer, model = page.model, html = page.html\r\n' +
     '#1\r\n#2\r\n#0\r\nreturn writer.join("");';
 	function parse(template, optimize) {
 		var rdr = new Reader(template),
@@ -420,7 +418,13 @@
 			return this.raw(Razor.view(view)(model));
 		}
 	}, basePage = {
-		html: htmlHelper
+		html: htmlHelper,
+		write: function (txt){ 
+			this.writeLiteral(this.html.encode(txt)); 
+		},
+		writeLiteral: function(txt){ 
+			this.writer.push(txt); 
+		}
 	};
 
 	function compile(code, page, optimize) {
@@ -432,7 +436,7 @@
 			throw x.message + ': ' + parsed;
 		}
 		return function (model, page1) {
-			var ctx = extend({}, basePage, page, page1, { model: model });
+			var ctx = extend(page1 || {}, basePage, page, { model: model, writer:[] });
 			return func.apply(ctx);
 		};
 	}
@@ -442,7 +446,7 @@
 		var template = views['~/' + id];
 		if (!template) {
 			var result = Razor.findView(id);
-			if (result instanceof deferred) {
+			if (typeof result.done === 'function') {
 				async = true;
 				var dfd = deferred();
 				result.done(function (script) {
@@ -462,8 +466,8 @@
 
 	Razor = {
 		view: view, compile: compile, parse: parse, findView: null,
-		basePage: basePage,
-		render: function (markup, model, page) { return compile(markup, page)(model); }
+		basePage: basePage, Cmd: Cmd,
+		render: function (markup, model, page) { return compile(markup)(model, page); }
 	};
   
   Razor.findView = function findViewInFileSystem(viewName) {
