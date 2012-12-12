@@ -275,7 +275,7 @@
 		}
 	});
 
-	var _function_template = 'var page = this, writer = page.writer, model = page.model, html = page.html\r\n' +
+	var _function_template = 'var page = this, writer = page.writer, model = page.model, html = page.html;\r\n' +
 		'#1\r\n#2\r\n#0\r\nreturn writer.join("");';
 	function parse(template) {
 		var rdr = new Reader(template),
