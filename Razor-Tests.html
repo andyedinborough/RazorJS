@@ -14,6 +14,9 @@
   <script src="http://code.jquery.com/qunit/qunit-git.js"></script>
   <script src="bin/browser/Razor.js"></script>
   <script>
+    Razor.parse('@{ }');
+
+
     if (!String.prototype.trim)
     	String.prototype.trim = function () {
     		return this.replace(/^\s+|\s+$/g, '');
@@ -29,9 +32,11 @@
     	equal(Razor.compile('te@*FAIL*@st')(), 'test', 'comment');
     	equal(Razor.compile('@if(model.name){ @model.name }')({ name: 'test' }), 'test', 'if statement');
     	equal(Razor.compile('@if(!model.name){ @fail(); } else { @model.name; }')({ name: 'test' }), 'test', 'if-else statement');
-    	equal(Razor.compile('@if(!model.name){ @:test }')({}), 'test', 'text-mode');
-    	equal(Razor.compile('@helper test(){ @:test }@test()')(), 'test', 'helper');
+    	equal(Razor.compile('@if(true){ @:test }')().trim(), 'test', 'text-mode');
+    	equal(Razor.compile('@helper test(name){ @:Hi @name } @test("bob")')().trim(), 'Hi bob', 'helper');
       equal(Razor.compile('@if(true){ <div><div>nested</div></div>  }')().trim(), '<div><div>nested</div></div>', 'nested tags inside code');
+      equal(Razor.compile('@{  }')().trim(), '', 'javascript code block');
+      equal(Razor.compile('@if(true){ <text>hi</text> }')().trim(), 'hi', 'using <text/>');
 
       try {
         Razor.compile('@(');

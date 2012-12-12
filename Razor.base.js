@@ -298,7 +298,6 @@
 
 			while (true) {
 				peek = rdr.peek();
-				if(!peek) break;
 
 				if (peek === '@') chunk.value += rdr.read();
 
@@ -319,7 +318,10 @@
 							}
 							block += rdr.readQuotedUntil('>');
 						}
-						cmds.push(parse('<' + block, level + 1, 0));
+						if(tagname == 'text'){
+							block = block.substr(5, block.length - 5 - 7);
+						} else block = '<' + block;
+						cmds.push(parse(block, level + 1, 0));
 					} else {
 						var chunk1 = rdr.readQuotedUntil('@', '<');
 						chunk.value += chunk.next + chunk1.value;
@@ -341,18 +343,20 @@
 
 			} else if (peek === '{') {
 				block = rdr.readBlock('{', '}');
-				cmds.push(parse(block.substr(0, block.length - 1), level + 1, 1).join('\n') + '}');
+				cmds.push(parse(block.substr(1, block.length - 2), level + 1, 1).join('\n'));
 
 			} else if (peek === ':' && mode === 1) {
 				block = rdr.readUntil('\n', '@');
-				while (block.next === '@' && rdr.peek(1) === '@') {
+				while (block.next === '@' && rdr.peek() === '@') {
 					var temp = rdr.readUntil('\n', '@');
 					block.value += temp.value;
 					block.next = temp.next;
 				}
+				if(block.next === '@') {
+					rdr.seek(-1);
+				}
 				block.value = block.value.substr(1);
-				cmds.push(block.value.match(/(.*?)\s*$/)[1], 2);
-				cmds.push(block.value.match(/\s*$/)[0] || '', 0);
+				cmds.push(block.value, 2);
 
 			} else if (
 					(peek === 'i' && rdr.peek(2) === 'if') ||
@@ -398,8 +402,7 @@
 				if (block) cmds.push(block, 1);
 			} else if (mode === 0) {
 				if(chunk.next) cmds.push('@', 2);
-				else cmds.push(chunk.value, 2);
-			} 
+			}
 		}
 
 		if (level > 0) return cmds;
