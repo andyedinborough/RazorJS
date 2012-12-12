@@ -5,7 +5,7 @@
 
 	var Razor;
 	function ifNative(func) {
-		if (func && func.toString().indexOf('[native code]') > -1)
+		if (func && (func+'').indexOf('[native code]') > -1)
 			return func;
 	}
 
@@ -64,11 +64,11 @@
 	var deferred = function Deferred() {
 		if (!(this instanceof Deferred)) return new Deferred();
 		var dq = [], aq = [], fq = [], state = 0, dfd = this, args,
-      process = function (arr, run) {
+			process = function (arr, run) {
 				var cb;
 				while (run && (cb = arr.shift()))
 					cb.apply(dfd, args);
-      };
+			};
 
 		extend(dfd, {
 			done: function (cb) {
@@ -110,43 +110,20 @@
 
 		var Chunk = reader.Chunk = function (value, next) {
 			this.value = value || ''; this.next = next || '';
+			if(!value && !next) return '';
 			this.length = (this.value + this.next).length;
 		};
 		extend(Chunk.prototype, {
 			length: 0,
 			toString: function () { return this.value + this.next + ''; }
 		});
-
-		reader.prototype.read = function (len) {
-			var value = this.peek(len);
-			this.position = Math.min(this.length, this.position + (len || 1));
-			return value;
-		};
-
-		reader.prototype.readAll = function () {
-			if (this.position >= this.length) return undefined;
-			var value = this.text.substr(this.position + 1);
-			this.position = this.length;
-			return value;
-		};
-
-		reader.prototype.peek = function (len) {
-			if ((this.position + 1) >= this.length) return undefined;
-			return this.text.substr(this.position + 1, len || 1);
-		};
-
-		reader.prototype.seek = function (offset, pos) {
-			this.position = Math.max(0,
-      Math.min(this.length,
-        (pos === 0 ? 0 : pos === 2 ? this.length : this.position) +
-        (offset || 1)
-        )
-      );
-			return this.position === this.length;
+		Chunk.create = function(value, next) {
+			if(!value && !next) return '';
+			return new Chunk(value, next);
 		};
 
 		function read(rdr, chars, until) {
-			var l, cache = [], len = chars.length, result = '', next = '';
+			var l, cache = [], result = '', next = '';
 
 			function predicate(chr) {
 				l = chr.length;
@@ -154,7 +131,7 @@
 				return next === chr;
 			}
 
-			while (true) {
+			while (!rdr.eof()) {
 				cache.length = 0;
 				if (until === some(chars, predicate)) {
 					if (until) {
@@ -163,7 +140,7 @@
 						next = last(result);
 						result = result.length > 0 ? result.substr(0, result.length - 1) : '';
 					}
-					return new Chunk(result, next);
+					return Chunk.create(result, next);
 				}
 
 				next = rdr.read();
@@ -172,18 +149,52 @@
 				} else break;
 			}
 
-			return new Chunk(result, next);
+			return Chunk.create(result, next);
 		}
 
-		reader.prototype.readUntil = function (chars) {
-			if (typeof chars === 'string') chars = [].slice.call(arguments);
-			return read(this, chars, true);
-		};
+		extend(reader.prototype, {
+			eof: function() {
+				return this.position >= this.length;
+			},
 
-		reader.prototype.readWhile = function (chars) {
-			if (typeof chars === 'string') chars = [].slice.call(arguments);
-			return read(this, chars, false);
-		};
+			read: function (len) {
+				var value = this.peek(len);
+				this.position = Math.min(this.length, this.position + (len || 1));
+				return value;
+			},
+
+			readAll: function () {
+				if (this.position >= this.length) return undefined;
+				var value = this.text.substr(this.position + 1);
+				this.position = this.length;
+				return value;
+			},
+
+			peek: function (len) {
+				if ((this.position + 1) >= this.length) return undefined;
+				return this.text.substr(this.position + 1, len || 1);
+			},
+
+			seek: function (offset, pos) {
+				this.position = Math.max(0,
+				Math.min(this.length,
+					(pos === 0 ? 0 : pos === 2 ? this.length : this.position) +
+					(offset || 1)
+					)
+				);
+				return this.position === this.length;
+			},
+
+			readUntil: function (chars) {
+				if (typeof chars === 'string') chars = [].slice.call(arguments);
+				return read(this, chars, true);
+			},
+
+			readWhile: function (chars) {
+				if (typeof chars === 'string') chars = [].slice.call(arguments);
+				return read(this, chars, false);
+			}
+		});
 
 		return reader;
 	})();
@@ -225,7 +236,7 @@
 			} else break;
 		}
 
-		return new Reader.Chunk(result, block.next);
+		return Reader.Chunk.create(result, block.next);
 	};
 
 	Reader.prototype.readBlock = function (open, close, numOpen) {
@@ -265,11 +276,11 @@
 	});
 
 	var _function_template = 'var page = this, writer = page.writer, model = page.model, html = page.html\r\n' +
-    '#1\r\n#2\r\n#0\r\nreturn writer.join("");';
-	function parse(template, optimize) {
+		'#1\r\n#2\r\n#0\r\nreturn writer.join("");';
+	function parse(template) {
 		var rdr = new Reader(template),
-      level = arguments[1] || 0, mode = arguments[2] || 0,
-      cmds = [], helpers = [], sections = [], chunk, peek, block;
+			level = arguments[1] || 0, mode = arguments[2] || 0,
+			cmds = [], helpers = [], sections = [], chunk, peek, block;
 		cmds.push = (function (push) {
 			return function (code, type) {
 				if (typeof code === 'string') code = [code];
@@ -280,23 +291,32 @@
 			};
 		})(cmds.push);
 
-		while (true) {
+		while (!rdr.eof()) {
 			chunk = mode === 0 ? rdr.readUntil('@') : rdr.readQuotedUntil('@', '<');
-			if (!chunk || (!chunk.value && !chunk.next)) break;
+			if (!chunk) break;
 
 			while (true) {
 				peek = rdr.peek();
+				if(!peek) break;
 
 				if (peek === '@') chunk.value += rdr.read();
 
 				if (mode === 1 && chunk.next === '<') {
-					var tagname = rdr.text.substr(rdr.position + 1).match(/^[a-z]+/i);
+					var tagname = rdr.text.substr(rdr.position + 1).match(/^[a-z]+(?:\:[a-z]+)?/i);
 					if (tagname) {
 						cmds.push(chunk.value, 0);
 						chunk = rdr.readUntil('>');
 						block = chunk + '';
 						if (last(chunk.value) !== '/') {
-							block += rdr.readUntil('</' + tagname + '>');
+							var nested_count = 1, nested;
+							nested = {next:true};
+							while(nested_count > 0) {
+								nested = rdr.readQuotedUntil(['</'+tagname,'<'+tagname]);
+								block += nested;
+								if(rdr.eof()) break;
+								nested_count += nested.next.substr(1,1) === '/' ? -1 : 1;
+							}
+							block += rdr.readQuotedUntil('>');
 						}
 						cmds.push(parse('<' + block, level + 1, 0));
 					} else {
@@ -334,16 +354,16 @@
 				cmds.push(block.value.match(/\s*$/)[0] || '', 0);
 
 			} else if (
-          (peek === 'i' && rdr.peek(2) === 'if') ||
-          (peek === 'd' && rdr.peek(2) === 'do') ||
-          (peek === 'f' && rdr.peek(3) === 'for') ||
-          (peek === 'w' && rdr.peek(5) === 'while') ||
-          (peek === 'h' && rdr.peek(6) === 'helper') ||
-          (peek === '7' && rdr.peek(7) === 'section')
-        ) {
+					(peek === 'i' && rdr.peek(2) === 'if') ||
+					(peek === 'd' && rdr.peek(2) === 'do') ||
+					(peek === 'f' && rdr.peek(3) === 'for') ||
+					(peek === 'w' && rdr.peek(5) === 'while') ||
+					(peek === 'h' && rdr.peek(6) === 'helper') ||
+					(peek === 's' && rdr.peek(7) === 'section')
+				) {
 				block = rdr.readBlock('{', '}');
 				if (peek === 'i') {
-					while (true) {
+					while (!rdr.eof()) {
 						var whiteSpace = rdr.readWhitespace();
 						if (!whiteSpace) break;
 						else if (rdr.peek(4) !== 'else') {
@@ -361,27 +381,32 @@
 
 			} else if (peek && !rxValid.test(last(chunk.value))) {
 				var remain, match;
-				block = '';
-				while (true) {
+				block = ''; 
+				while (!rdr.eof()) {
 					remain = rdr.text.substr(rdr.position + 1);
 					match = remain.match(rxValid);
 					if (!match) break;
 					block += rdr.read(match[0].length);
 					peek = rdr.peek();
+					if(!peek) break;
 					if (peek === '[' || peek === '(') {
 						block += rdr.readBlock(peek, peek === '[' ? ']' : ')');
+						break;
 					}
 				}
 				if (block) cmds.push(block, 1);
-			} else if (mode === 0 && chunk.next) cmds.push('@', 2);
+			} else if (mode === 0) {
+				if(chunk.next) cmds.push('@', 2);
+				else cmds.push(chunk.value, 2);
+			} 
 		}
 
 		if (level > 0) return cmds;
 		template = cmds.join('\r\n');
 		template = _function_template
-        .replace('#0', template)
-        .replace('#1', map(helpers, returnEmpty).join('\r\n'))
-        .replace('#2', map(sections, returnEmpty).join('\r\n'));
+				.replace('#0', template)
+				.replace('#1', map(helpers, returnEmpty).join('\r\n'))
+				.replace('#2', map(sections, returnEmpty).join('\r\n'));
 		return template;
 	}
 
@@ -402,10 +427,10 @@
 			if (value.isHtmlString) return value;
 			if (typeof value !== 'string') value += '';
 			value = value
-        .split('&').join('&amp;')
-        .split('<').join('&lt;')
-        .split('>').join('&gt;')
-        .split('"').join('&quot;');
+				.split('&').join('&amp;')
+				.split('<').join('&lt;')
+				.split('>').join('&gt;')
+				.split('"').join('&quot;');
 			return htmlHelper.raw(value);
 		},
 		attributeEncode: function (value) {
@@ -427,8 +452,8 @@
 		}
 	};
 
-	function compile(code, page, optimize) {
-		var func, parsed = parse(code, optimize);
+	function compile(code, page) {
+		var func, parsed = parse(code);
 		try {
 			func = new Function(parsed);
 		} catch (x) {

@@ -32,6 +32,17 @@
     	equal(Razor.compile('@if(!model.name){ @:test }')({}), 'test', 'text-mode');
     	equal(Razor.compile('@helper test(){ @:test }@test()')(), 'test', 'helper');
       equal(Razor.compile('@if(true){ <div><div>nested</div></div>  }')().trim(), '<div><div>nested</div></div>', 'nested tags inside code');
+
+      try {
+        Razor.compile('@(');
+      } catch (x) { 
+        ok(!!x, 'Didn\'t crash the browser');
+      }
+      try {
+        Razor.compile('@{');
+      } catch (x) { 
+        ok(!!x, 'Didn\'t crash the browser');
+      }
     });
 
     test('Views', function () {
