@@ -31,7 +31,7 @@
     	equal(Razor.compile('@if(!model.name){ @fail(); } else { @model.name; }')({ name: 'test' }), 'test', 'if-else statement');
     	equal(Razor.compile('@if(!model.name){ @:test }')({}), 'test', 'text-mode');
     	equal(Razor.compile('@helper test(){ @:test }@test()')(), 'test', 'helper');
-    	equal(Razor.compile('@for(var i = 0; i<1; i++){ @i }')().trim(), '0', 'for loop');
+      equal(Razor.compile('@if(true){ <div><div>nested</div></div>  }')().trim(), '<div><div>nested</div></div>', 'nested tags inside code');
     });
 
     test('Views', function () {
