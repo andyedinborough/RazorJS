@@ -34,6 +34,8 @@
       equal(Razor.compile('@if(true){ <div><div>nested</div></div>  }')().trim(), '<div><div>nested</div></div>', 'nested tags inside code');
       equal(Razor.compile('@{  }')().trim(), '', 'javascript code block');
       equal(Razor.compile('@if(true){ <text>hi</text> }')().trim(), 'hi', 'using <text/>');
+      equal(Razor.compile('@if(true){ if(false) { @:fail } else { @:win } }')().trim(), 'win', 'nested if');
+      equal(Razor.compile('@if(true){ if(false) { @:fail } else { <div>Hi!</div> } }')().trim(), '<div>Hi!</div>', 'nested if w/ html');
 
       try {
         Razor.compile('@(');

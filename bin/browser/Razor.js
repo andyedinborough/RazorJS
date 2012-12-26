@@ -345,15 +345,13 @@
 				cmds.push(parse(block.substr(1, block.length - 2), level + 1, 1).join('\n'));
 
 			} else if (peek === ':' && mode === 1) {
-				block = rdr.readUntil('\n', '@');
+				block = rdr.readUntil('\n', '@', '}');
 				while (block.next === '@' && rdr.peek() === '@') {
-					var temp = rdr.readUntil('\n', '@');
+					var temp = rdr.readUntil('\n', '@', '}');
 					block.value += temp.value;
 					block.next = temp.next;
 				}
-				if(block.next === '@') {
-					rdr.seek(-1);
-				}
+				rdr.seek(-1);
 				block.value = block.value.substr(1);
 				cmds.push(block.value, 2);
 
