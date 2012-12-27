@@ -21,6 +21,7 @@
 
 		test('Basic Parsing', function () {
 			equal(Razor.compile('@if(true) { if(true){ <a @(0>1?0:1) /> } }')().trim(), '<a 1 />', 'ternary inside tag inside nested if');
+			equal(Razor.compile('@if(true) { if(true){ <a @(0>1?0:1) /> <a> </a> } }')().trim(), '<a 1 /><a> </a>', 'ternary inside tag inside nested if followed by another tag');
 
 			equal(Razor.compile('test')(), 'test', 'no razor');
 			equal(Razor.compile('test@test.com')(), 'test@test.com', 'email address');

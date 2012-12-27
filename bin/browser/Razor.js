@@ -200,7 +200,7 @@
 	})();
 
 	//Reader Extensions
-	var rxValid = /^[a-z0-9\._]+/ig, rxTagName = /^[a-z]+(?:\:[a-z]+)?/ig;
+	var rxValid = /^[a-z0-9\._]+/i, rxTagName = /^[a-z]+(?:\:[a-z]+)?/i;
 	function last(str) {
 		return (str = (str || '')).substr(str.length - 1);
 	}
@@ -371,7 +371,7 @@
 
 				if (mode === 1 && chunk.next === '<') {
 					//the longest tagname is 8 chars, reading 30 out to cover it
-					var tag_written, tagname = (rdr.text.substr(rdr.position + 1, 30).match(rxTagName) || 0)[0] || '';
+					var tag_written = false, tagname = (rdr.text.substr(rdr.position + 1, 30).match(rxTagName) || 0)[0] || '';
 					if (tagname) {
 						cmds.push(chunk.value, 0);
 						while(!rdr.eof()) {
