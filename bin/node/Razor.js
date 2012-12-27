@@ -200,7 +200,7 @@
 	})();
 
 	//Reader Extensions
-	var rxValid = /^[a-z0-9\._]+/i;
+	var rxValid = /^[a-z0-9\._]+/ig, rxTagName = /^[a-z]+(?:\:[a-z]+)?/ig;
 	function last(str) {
 		return (str = (str || '')).substr(str.length - 1);
 	}
@@ -275,12 +275,81 @@
 		}
 	});
 
-	var _function_template = 'var page = this, writer = page.writer, model = page.model, html = page.html;\r\n' +
-		'#1\r\n#2\r\n#0\r\nreturn writer.join("");';
+	var _function_template = 'var page = this, writer = page.writer, model = page.model, html = page.html;\n#1\n#2\n#0\nreturn writer.join("");';
+
 	function parse(template) {
 		var rdr = new Reader(template),
 			level = arguments[1] || 0, mode = arguments[2] || 0,
-			cmds = [], helpers = [], sections = [], chunk, peek, block;
+			cmds = [], helpers = [], sections = [], chunk, peek, block,
+			parseCodeBlock = function(){				
+				peek = rdr.peek();
+				if (peek === '*') rdr.readUntil('*@');
+					else if (peek === '(') {
+						block = rdr.readBlock('(', ')');
+						cmds.push(block.substr(1, block.length - 2), 1);
+
+					} else if (peek === '{') {
+						block = rdr.readBlock('{', '}');
+						cmds.push(parse(block.substr(1, block.length - 2), level + 1, 1).join('\n'));
+
+					} else if (peek === ':' && mode === 1) {
+						block = rdr.readUntil('\n', '@', '}');
+						while (block.next === '@' && rdr.peek() === '@') {
+							var temp = rdr.readUntil('\n', '@', '}');
+							block.value += temp.value;
+							block.next = temp.next;
+						}
+						rdr.seek(-1);
+						block.value = block.value.substr(1);
+						cmds.push(block.value, 2);
+
+					} else if (
+							(peek === 'i' && rdr.peek(2) === 'if') ||
+							(peek === 'd' && rdr.peek(2) === 'do') ||
+							(peek === 'f' && rdr.peek(3) === 'for') ||
+							(peek === 'w' && rdr.peek(5) === 'while') ||
+							(peek === 'h' && rdr.peek(6) === 'helper') ||
+							(peek === 's' && rdr.peek(7) === 'section')
+						) {
+						block = rdr.readBlock('{', '}');
+						if (peek === 'i') {
+							while (!rdr.eof()) {
+								var whiteSpace = rdr.readWhitespace();
+								if (!whiteSpace) break;
+								else if (rdr.peek(4) !== 'else') {
+									rdr.seek(-whiteSpace.length);
+									break;
+								}
+								block += whiteSpace + rdr.readBlock('{', '}');
+							}
+						}
+
+						var parsed = parse(block.substr(0, block.length - 1), level + 1, 1).join('\n') + '}';
+						if (peek === 'h') helpers.push('function ' + parsed.substr(7));
+						else if (peek === 's') sections.push('function _section_' + parsed.substr(8));
+						else cmds.push(parsed);
+
+					} else if (peek && !rxValid.test(last(chunk.value))) {
+						var remain, match;
+						block = ''; 
+						while (!rdr.eof()) {
+							remain = rdr.text.substr(rdr.position + 1);
+							match = remain.match(rxValid);
+							if (!match) break;
+							block += rdr.read(match[0].length);
+							peek = rdr.peek();
+							if(!peek) break;
+							if (peek === '[' || peek === '(') {
+								block += rdr.readBlock(peek, peek === '[' ? ']' : ')');
+								break;
+							}
+						}
+						if (block) cmds.push(block, 1);
+					} else if (mode === 0) {
+						if(chunk.next) cmds.push('@', 2);
+					}
+			};
+
 		cmds.push = (function (push) {
 			return function (code, type) {
 				if (typeof code === 'string') code = [code];
@@ -301,14 +370,21 @@
 				if (peek === '@') chunk.value += rdr.read();
 
 				if (mode === 1 && chunk.next === '<') {
-					var tagname = rdr.text.substr(rdr.position + 1).match(/^[a-z]+(?:\:[a-z]+)?/i);
+					//the longest tagname is 8 chars, reading 30 out to cover it
+					var tag_written, tagname = (rdr.text.substr(rdr.position + 1, 30).match(rxTagName) || 0)[0] || '';
 					if (tagname) {
 						cmds.push(chunk.value, 0);
-						chunk = rdr.readUntil('>');
+						while(!rdr.eof()) {
+							chunk = rdr.readUntil('@', '>');
+							if(chunk.next == '@') {
+								cmds.push('<'+chunk.value, 2);
+								tag_written = true;
+								parseCodeBlock();
+							} else break;
+						}
 						block = chunk + '';
 						if (last(chunk.value) !== '/') {
 							var nested_count = 1, nested;
-							nested = {next:true};
 							while(nested_count > 0) {
 								nested = rdr.readQuotedUntil(['</'+tagname,'<'+tagname]);
 								block += nested;
@@ -317,9 +393,11 @@
 							}
 							block += rdr.readQuotedUntil('>');
 						}
-						if(tagname == 'text'){
-							block = block.substr(5, block.length - 5 - 7);
-						} else block = '<' + block;
+						if(!tag_written) {
+							if(tagname === 'text'){
+								block = block.substr(5, block.length - 5 - 7);
+							} else block = '<' + block;
+						} 
 						cmds.push(parse(block, level + 1, 0));
 					} else {
 						var chunk1 = rdr.readQuotedUntil('@', '<');
@@ -335,71 +413,7 @@
 				break;
 			}
 
-			if (peek === '*') rdr.readUntil('*@');
-			else if (peek === '(') {
-				block = rdr.readBlock('(', ')');
-				cmds.push(block.substr(1, block.length - 2), 1);
-
-			} else if (peek === '{') {
-				block = rdr.readBlock('{', '}');
-				cmds.push(parse(block.substr(1, block.length - 2), level + 1, 1).join('\n'));
-
-			} else if (peek === ':' && mode === 1) {
-				block = rdr.readUntil('\n', '@', '}');
-				while (block.next === '@' && rdr.peek() === '@') {
-					var temp = rdr.readUntil('\n', '@', '}');
-					block.value += temp.value;
-					block.next = temp.next;
-				}
-				rdr.seek(-1);
-				block.value = block.value.substr(1);
-				cmds.push(block.value, 2);
-
-			} else if (
-					(peek === 'i' && rdr.peek(2) === 'if') ||
-					(peek === 'd' && rdr.peek(2) === 'do') ||
-					(peek === 'f' && rdr.peek(3) === 'for') ||
-					(peek === 'w' && rdr.peek(5) === 'while') ||
-					(peek === 'h' && rdr.peek(6) === 'helper') ||
-					(peek === 's' && rdr.peek(7) === 'section')
-				) {
-				block = rdr.readBlock('{', '}');
-				if (peek === 'i') {
-					while (!rdr.eof()) {
-						var whiteSpace = rdr.readWhitespace();
-						if (!whiteSpace) break;
-						else if (rdr.peek(4) !== 'else') {
-							rdr.seek(-whiteSpace.length);
-							break;
-						}
-						block += whiteSpace + rdr.readBlock('{', '}');
-					}
-				}
-
-				var parsed = parse(block.substr(0, block.length - 1), level + 1, 1).join('\n') + '}';
-				if (peek === 'h') helpers.push('function ' + parsed.substr(7));
-				else if (peek === 's') sections.push('function _section_' + parsed.substr(8));
-				else cmds.push(parsed);
-
-			} else if (peek && !rxValid.test(last(chunk.value))) {
-				var remain, match;
-				block = ''; 
-				while (!rdr.eof()) {
-					remain = rdr.text.substr(rdr.position + 1);
-					match = remain.match(rxValid);
-					if (!match) break;
-					block += rdr.read(match[0].length);
-					peek = rdr.peek();
-					if(!peek) break;
-					if (peek === '[' || peek === '(') {
-						block += rdr.readBlock(peek, peek === '[' ? ']' : ')');
-						break;
-					}
-				}
-				if (block) cmds.push(block, 1);
-			} else if (mode === 0) {
-				if(chunk.next) cmds.push('@', 2);
-			}
+			parseCodeBlock();
 		}
 
 		if (level > 0) return cmds;
