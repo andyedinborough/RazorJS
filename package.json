@@ -1,0 +1,13 @@
+{
+  "title": "razorjs",
+  "name": "razorjs",
+  "description": "Razor inspired view-engine",
+  "version": "0.1.0",
+  "author": {
+    "name":"Andy Edinborough (@andyedinborough)"
+  },
+  "homepage": "https://github.com/andyedinborough/RazorJS",
+  "licenses": [{
+    "type": "MIT"
+  }]
+}

@@ -1,12 +1,3 @@
-/*
-  razorjs 0.1.0 <https://github.com/andyedinborough/RazorJS>
-  Copyright (c) 2013 Andy Edinborough (@andyedinborough)
-
-  Released under MIT License
-*/
-
-(function(global, undefined){
-
 function ifNative(func) {
 	if (func && (func+'').indexOf('[native code]') > -1)
 		return func;
@@ -514,21 +505,3 @@ Razor = {
 	basePage: basePage, Cmd: Cmd,
 	render: function (markup, model, page) { return compile(markup)(model, page); }
 };
-Razor.findView = function findViewInFileSystem(viewName) {
-  var fs = require('fs'), dfd = deferred();
-  if (viewName.substring(viewName.lastIndexOf('.')) !== '.jshtml')
-    viewName += '.jshtml';
-
-  fs.readFile(viewName, 'ascii', function (err, data) {
-    if (err) {
-      console.error("Could not open file: %s", err);
-      process.exit(1);
-    }
-
-    dfd.resolve(data.toString('ascii'));
-  });
-  return dfd;
-};
-
-module.Razor = module.exports.Razor = Razor; 
-})(module);
