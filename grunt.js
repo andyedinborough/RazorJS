@@ -4,7 +4,7 @@ module.exports = function(grunt) {
   // Project configuration.
   grunt.initConfig({
     pkg: '<json:package.json>',
-    
+
     meta: {
       banner: '/*\n  <%= pkg.title || pkg.name %> <%= pkg.version %>' +
       '<%= pkg.homepage ? " <" + pkg.homepage + ">\n" : "" %>' +
@@ -17,7 +17,13 @@ module.exports = function(grunt) {
       browser: {
         pre: '(function(global, undefined){',
         post: '})(window);'
-      }
+      },
+      files: [
+        'prototypes.js',
+        'util.js',
+        'reader.js',
+        'razor.core.js',
+      ]
     },
 
     lint: {
@@ -29,17 +35,11 @@ module.exports = function(grunt) {
     },
 
     concat: {
-      files: [
-        'prototypes.js',
-        'util.js',
-        'reader.js',
-        'razor.core.js',
-      ],
       node: {
         src: [
           '<banner:meta.banner>', 
           '<banner:meta.node.pre>',
-          '<config:concat.files>', 
+          '<config:meta.files>', 
           'razor.node.js', 
           '<banner:meta.node.post>'
         ],
@@ -49,7 +49,7 @@ module.exports = function(grunt) {
         src: [
           '<banner:meta.banner>', 
           '<banner:meta.browser.pre>',
-          '<config:concat.files>', 
+          '<config:meta.files>', 
           'razor.browser.js', 
           '<banner:meta.browser.post>'
         ],
