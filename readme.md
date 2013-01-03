@@ -34,72 +34,65 @@ Syntax
       <tr>
           <td valign="top">Code Block</td>
           <td valign="top">
-              <pre class="csharpcode">
-<span class="asp">@{</span> 
-<span class="rzr"><span class="kwrd">int</span> x = 123;</span> 
-<span class="rzr"><span class="kwrd">string</span> y = <span class=
-"str">"because."</span>;</span>
-<span class="asp">}</span>
+              <pre>
+@{ 
+	int x = 123; 
+	string y = "because.";
+}
 </pre>
           </td>
+          <td> </td>
       </tr>
 
       <tr>
           <td valign="top">Expression (Html Encoded)</td>
           <td valign="top">
-              <pre class="csharpcode">
-<span class="kwrd">&lt;</span><span class="html">span</span><span class=
-"kwrd">&gt;</span><span class="asp">@</span><span class=
-"rzr">model.Message</span><span class="kwrd">&lt;/</span><span class=
-"html">span</span><span class="kwrd">&gt;</span>
+              <pre>
+&lt;span&gt;@model.message&lt;/span&gt;
 </pre>
           </td>
+          <td> </td>
       </tr>
 
       <tr>
           <td valign="top">Expression (Unencoded)</td>
 
           <td valign="top">
-              <pre class="csharpcode">
-<span class="kwrd">&lt;</span><span class="html">span</span><span class=
-"kwrd">&gt;
-</span><span class="asp">@</span><span class=
-"rzr">Html.Raw(model.Message)</span>
-<span class="kwrd">&lt;/</span><span class="html">span</span><span class=
-"kwrd">&gt;</span>
+              <pre>
+&lt;span&gt;
+	@html.raw(model.message)
+&lt;/span&gt;
 </pre>
           </td>
+          <td> </td>
       </tr>
 
       <tr>
           <td valign="top">Combining Text and markup</td>
 
           <td valign="top">
-              <pre class="csharpcode">
-<span class="asp">@</span><span class="rzr"><span class=
-"kwrd">foreach</span>(var item <span class="kwrd">in</span> items) {</span>
-<span class="kwrd">&lt;</span><span class="html">span</span><span class=
-"kwrd">&gt;</span><span class="asp">@</span><span class=
-"rzr">item.Prop</span><span class="kwrd">&lt;/</span><span class=
-"html">span</span><span class="kwrd">&gt;</span> 
-<span class="rzr">}</span>
+              <pre>
+@@{ 
+	model.items.forEach(function(item) {
+		&lt;span&gt;@item.Prop&lt;/span&gt; 
+	}); 
+}
 </pre>
           </td>
+          <td> </td>
       </tr>
 
       <tr>
           <td valign="top">Mixing code and Plain text</td>
 
           <td valign="top">
-              <pre class="csharpcode">
-<span class="asp">@</span><span class="rzr"><span class=
-"kwrd">if</span> (foo) {</span>
-<span class="kwrd">&lt;</span><span class="html">text</span><span class=
-"kwrd">&gt;</span>Plain Text<span class="kwrd">&lt;/</span><span class=
-"html">text</span><span class="kwrd">&gt;</span> 
-<span class="rzr">}</span>
+              <pre>
+@if (foo) {
+	&lt;text&gt;Plain Text&lt;/text&gt; 
+}
 </pre>
           </td>
+          <td> </td>
       </tr>
 
       <tr>
@@ -107,21 +100,20 @@ Syntax
           (alternate)</td>
 
           <td valign="top">
-              <pre class="csharpcode">
-<span class="asp">@</span><span class="rzr"><span class=
-"kwrd">if</span> (foo) {</span>
-<span class="asp">@:</span>Plain Text is <span class=
-"asp">@</span><span class="rzr">bar</span>
-<span class="rzr">}</span>
+              <pre>
+@if (foo) {
+	@:Plain Text is @bar
+}
 </pre>
           </td>
+          <td> </td>
       </tr>
 
       <tr>
           <td valign="top">Email Addresses</td>
 
           <td valign="top">
-              <pre class="csharpcode">
+              <pre>
 Hi test@example.com
 </pre>
           </td>
@@ -135,11 +127,8 @@ Hi test@example.com
           <td valign="top">Explicit Expression</td>
 
           <td valign="top">
-              <pre class="csharpcode">
-<span class="kwrd">&lt;</span><span class="html">span</span><span class=
-"kwrd">&gt;</span>ISBN<span class="asp">@(</span><span class=
-"rzr">isbnNumber</span><span class="asp">)</span><span class=
-"kwrd">&lt;/</span><span class="html">span</span><span class="kwrd">&gt;</span>
+              <pre>
+&lt;span&gt;ISBN@(isbnNumber)&lt;/span&gt;
 </pre>
           </td>
 
@@ -151,12 +140,10 @@ Hi test@example.com
           <td valign="top">Escaping the @ sign</td>
 
           <td valign="top">
-              <pre class="csharpcode">
-<span class="kwrd">&lt;</span><span class="html">span</span><span class=
-"kwrd">&gt;</span>In Razor, you use the 
+              <pre>
+&lt;span&gt;In Razor, you use the 
 @@foo to display the value 
-of foo<span class="kwrd">&lt;/</span><span class="html">span</span><span class=
-"kwrd">&gt;</span>
+of foo&lt;/span&gt;
 </pre>
           </td>
 
@@ -168,23 +155,25 @@ of foo<span class="kwrd">&lt;/</span><span class="html">span</span><span class=
           <td valign="top">Server side Comment</td>
 
           <td valign="top">
-              <pre class="csharpcode">
-<span class="asp">@*</span>
-<span class="rem">This is a server side 
-multiline comment </span>
-<span class="asp">*@</span>
+              <pre>
+@*
+	This is a server side 
+	multiline comment 
+*@
 </pre>
           </td>
+          <td> </td>
       </tr>
 
       <tr>
           <td valign="top">Mixing expressions and text</td>
 
           <td valign="top">
-              <pre class="csharpcode">
-Hello <span class="asp">@</span>title. <span class="asp">@</span>name.
+              <pre>
+Hello @title. @name.
 </pre>
           </td>
+          <td> </td>
       </tr>
 	</tbody>
 </table>            
