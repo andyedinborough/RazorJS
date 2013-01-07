@@ -110,7 +110,11 @@ function returnEmpty(func) {
 }
 
 function doubleEncode(txt) {
-	return txt.split('\r').join('\\r').split('\n').join('\\n').split('"').join('\\"');
+	return txt
+		.split('\\').join('\\\\')
+		.split('\r').join('\\r')
+		.split('\n').join('\\n')
+		.split('"').join('\\"');
 }
 
 function htmlString(value) { return { toString: function () { return value; }, isHtmlString: true }; }
