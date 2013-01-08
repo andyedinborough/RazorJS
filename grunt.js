@@ -11,8 +11,8 @@ module.exports = function(grunt) {
       '  Copyright (c) <%= grunt.template.today("yyyy") %> <%= pkg.author.name %>' +
       '\n\n  Released under <%= _.pluck(pkg.licenses, "type").join(", ") %> License\n*/',
       node: {
-        pre: '(function(global, undefined){',
-        post: '})(module);'
+        pre: '(function(global, module, undefined){',
+        post: '})(global, module);'
       },
       browser: {
         pre: '(function(global, undefined){',

@@ -2,7 +2,7 @@
   "title": "razorjs",
   "name": "razorjs",
   "description": "Razor inspired view-engine",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name":"Andy Edinborough (@andyedinborough)"
   },

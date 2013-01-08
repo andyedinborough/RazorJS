@@ -114,7 +114,7 @@ function parse(template) {
 					while(!rdr.eof()) {
 						chunk = rdr.readUntil('@', '>');
 						if(chunk.next == '@') {
-							cmds.push('<'+chunk.value, 2);
+							cmds.push((tag_written ? '' : '<') + chunk.value, 2);
 							tag_written = true;
 							parseCodeBlock();
 						} else break;

@@ -1,11 +1,11 @@
 /*
-  razorjs 0.1.0 <https://github.com/andyedinborough/RazorJS>
+  razorjs 0.1.1 <https://github.com/andyedinborough/RazorJS>
   Copyright (c) 2013 Andy Edinborough (@andyedinborough)
 
   Released under MIT License
 */
 
-(function(global, undefined){
+(function(global, module, undefined){
 
 function ifNative(func) {
 	if (func && (func+'').indexOf('[native code]') > -1)
@@ -396,7 +396,7 @@ function parse(template) {
 					while(!rdr.eof()) {
 						chunk = rdr.readUntil('@', '>');
 						if(chunk.next == '@') {
-							cmds.push('<'+chunk.value, 2);
+							cmds.push((tag_written ? '' : '<') + chunk.value, 2);
 							tag_written = true;
 							parseCodeBlock();
 						} else break;
@@ -535,4 +535,4 @@ Razor.findView = function findViewInFileSystem(viewName) {
 };
 
 module.Razor = module.exports.Razor = Razor; 
-})(module);
+})(global, module);

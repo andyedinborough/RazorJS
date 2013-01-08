@@ -21,6 +21,7 @@
 			};
 
 		test('Basic Parsing', function () {
+			equal(Razor.compile('@{ <a b=@0 c=@1> </a> }')().trim(), '<a b=0 c=1> </a>', 'multiple code snippets in a tag opener inside a code block');
 			equal(Razor.compile('test\\test')().trim(), 'test\\test', '\\ needs to be double-encoded');
 
 			equal(Razor.compile('@if(true) { if(true){ <a @(0>1?0:1) /> } }')().trim(), '<a 1 />', 'ternary inside tag inside nested if');

@@ -1,5 +1,5 @@
 /*
-  razorjs 0.1.0 <https://github.com/andyedinborough/RazorJS>
+  razorjs 0.1.1 <https://github.com/andyedinborough/RazorJS>
   Copyright (c) 2013 Andy Edinborough (@andyedinborough)
 
   Released under MIT License
@@ -396,7 +396,7 @@ function parse(template) {
 					while(!rdr.eof()) {
 						chunk = rdr.readUntil('@', '>');
 						if(chunk.next == '@') {
-							cmds.push('<'+chunk.value, 2);
+							cmds.push((tag_written ? '' : '<') + chunk.value, 2);
 							tag_written = true;
 							parseCodeBlock();
 						} else break;
