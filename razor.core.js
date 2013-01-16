@@ -207,32 +207,32 @@ function compile(code, page) {
 	};
 }
 
-var views = {}, async = false;
-function view(id, page) {
+var views = {};
+function view(id, page, cb) {
+	if(!cb && typeof page === 'function') {
+		return view(id, undefined, page);
+	}
+
 	var template = views['~/' + id];
 	if (!template) {
-		var result = Razor.findView(id);
-		if (!result) return;
-		if (typeof result.done === 'function') {
-			async = true;
-			var dfd = deferred();
-			result.done(function (script) {
-				if (script) {
-					template = views['~/' + id] = Razor.compile(script, page);
-				}
-				dfd.resolve(template);
-			});
-			return dfd;
-		} else if (result) {
+		var done = function(script){
+			if (script) {
+				views['~/' + id] = Razor.compile(script, page);
+				return view(id, page, cb);
+			}
+		};
+
+		var result = Razor.findView(id, cb ? done : undefined);
+		if (result) {
 			return views['~/' + id] = Razor.compile(result, page);
 		}
-	} else if (async) {
-		return deferred().resolve(template);
+	} else if (cb) {
+		return void cb(template);
 	} else return template;
 }
 
-Razor = {
+var Razor = {
 	view: view, compile: compile, parse: parse, findView: null,
-	basePage: basePage, Cmd: Cmd,
+	basePage: basePage, Cmd: Cmd, extend: extend,
 	render: function (markup, model, page) { return compile(markup)(model, page); }
 };

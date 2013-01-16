@@ -64,46 +64,6 @@ function extend(a) {
 	return a;
 }
 
-var deferred = function Deferred() {
-	if (!(this instanceof Deferred)) return new Deferred();
-	var dq = [], aq = [], fq = [], state = 0, dfd = this, args,
-		process = function (arr, run) {
-			var cb;
-			while (run && (cb = arr.shift()))
-				cb.apply(dfd, args);
-		};
-
-	extend(dfd, {
-		done: function (cb) {
-			if (cb) dq.push(cb);
-			process(dq, state === 1);
-			process(aq, state !== 0);
-			return dfd;
-		},
-		always: function (cb) {
-			aq.push(cb);
-			process(aq, state !== 0);
-			return dfd;
-		},
-		fail: function (cb) {
-			if (cb) fq.push(cb);
-			process(fq, state === -1);
-			process(aq, state !== 0);
-			return dfd;
-		},
-		resolve: function () {
-			args = arguments;
-			if (state === 0) state = 1;
-			return dfd.done();
-		},
-		reject: function () {
-			args = arguments;
-			if (state === 0) state = -1;
-			return dfd.fail();
-		}
-	});
-};
-
 function returnEmpty(func) {
 	var i = func.indexOf('{');
 	return func.substr(0, i + 1) + '\r\n' + func.substring(i + 1, func.lastIndexOf('}')) + '; return ""; }';
@@ -117,7 +77,14 @@ function doubleEncode(txt) {
 		.split('"').join('\\"');
 }
 
-function htmlString(value) { return { toString: function () { return value; }, isHtmlString: true }; }
+function htmlString(value) { 
+	return { 
+		toString: function () { 
+			return value; 
+		}, 
+		isHtmlString: true 
+	}; 
+}
 
 
 var Reader = (function () {
@@ -489,33 +456,33 @@ function compile(code, page) {
 	};
 }
 
-var views = {}, async = false;
-function view(id, page) {
+var views = {};
+function view(id, page, cb) {
+	if(!cb && typeof page === 'function') {
+		return view(id, undefined, page);
+	}
+
 	var template = views['~/' + id];
 	if (!template) {
-		var result = Razor.findView(id);
-		if (!result) return;
-		if (typeof result.done === 'function') {
-			async = true;
-			var dfd = deferred();
-			result.done(function (script) {
-				if (script) {
-					template = views['~/' + id] = Razor.compile(script, page);
-				}
-				dfd.resolve(template);
-			});
-			return dfd;
-		} else if (result) {
+		var done = function(script){
+			if (script) {
+				views['~/' + id] = Razor.compile(script, page);
+				return view(id, page, cb);
+			}
+		};
+
+		var result = Razor.findView(id, cb ? done : undefined);
+		if (result) {
 			return views['~/' + id] = Razor.compile(result, page);
 		}
-	} else if (async) {
-		return deferred().resolve(template);
+	} else if (cb) {
+		return void cb(template);
 	} else return template;
 }
 
-Razor = {
+var Razor = {
 	view: view, compile: compile, parse: parse, findView: null,
-	basePage: basePage, Cmd: Cmd,
+	basePage: basePage, Cmd: Cmd, extend: extend,
 	render: function (markup, model, page) { return compile(markup)(model, page); }
 };
 var scripts = global.document.getElementsByTagName('script');
