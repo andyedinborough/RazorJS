@@ -17,17 +17,11 @@ module.exports = function(grunt) {
       browser: {
         pre: '(function(global, undefined){',
         post: '})(window);'
-      },
-      files: [
-        'prototypes.js',
-        'util.js',
-        'reader.js',
-        'razor.core.js',
-      ]
+      }
     },
 
     lint: {
-      files: ['bin/browser/<%= pkg.name %>.js']
+      files: ['bin/browser/<%= pkg.name %>.js', 'bin/node/<%= pkg.name %>.js']
     },
 
     qunit: {
@@ -39,7 +33,10 @@ module.exports = function(grunt) {
         src: [
           '<banner:meta.banner>', 
           '<banner:meta.node.pre>',
-          '<config:meta.files>', 
+          'prototypes.node.js',
+          'util.js',
+          'reader.js',
+          'razor.core.js',
           'razor.node.js', 
           '<banner:meta.node.post>'
         ],
@@ -49,7 +46,10 @@ module.exports = function(grunt) {
         src: [
           '<banner:meta.banner>', 
           '<banner:meta.browser.pre>',
-          '<config:meta.files>', 
+          'prototypes.js',
+          'util.js',
+          'reader.js',
+          'razor.core.js',
           'razor.browser.js', 
           '<banner:meta.browser.post>'
         ],
@@ -58,10 +58,6 @@ module.exports = function(grunt) {
     },
 
     min: {
-      node: {
-        src: ['<banner:meta.banner>', '<config:concat.node.dest>'],
-        dest: 'bin/node/razor.min.js'
-      },
       browser: {
         src: ['<banner:meta.banner>', '<config:concat.browser.dest>'],
         dest: 'bin/browser/razor.min.js'

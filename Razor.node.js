@@ -24,11 +24,11 @@ Razor.precompile = function(code, page) {
     ', func = function(){ ' + Razor.parse(code) + ' }';
   if(!wrapper) wrapper = Razor.compile('');
 
+  code = '(function(){ ' + code + ';\nreturn ' + wrapper + '; })()';
   code = code
-    .replace(/(\W)extend(\W)/, '$1Razor.extend$2')
-    .replace(/(\W)basePage(\W)/, '$1Razor.basePage$2');
+    .replace(/(\W)extend(\W)/g, '$1Razor.extend$2')
+    .replace(/(\W)basePage(\W)/g, '$1Razor.basePage$2');
 
-  code = '(function(){ \n' + code + ' return ' + wrapper + '; })()';
   return code;
 };
 

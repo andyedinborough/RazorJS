@@ -7,52 +7,13 @@
 
 (function(global, module, undefined){
 
-function ifNative(func) {
-	if (func && (func+'').indexOf('[native code]') > -1)
-		return func;
-}
-
 var proxy = function (func) {
 	return function (obj, arg) { return func.apply(obj, [arg]); };
-};
-
-var each = proxy(ifNative(Array.prototype.forEach) || function (func, thisObj) {
-	var l = this.length, j = l, i, scope = thisObj || global;
-	while (j--) func.apply(scope, [this[(i = l - j - 1)], i]);
-});
-
-var map = proxy(ifNative(Array.prototype.map) || function (fn, thisObj) {
-	var scope = thisObj || global, a = [];
-	for (var i = 0, j = this.length; i < j; ++i) {
-		a.push(fn.call(scope, this[i], i, this));
-	}
-	return a;
-});
-
-var some = proxy(ifNative(Array.prototype.some) || function (fn, thisObj) {
-	var scope = thisObj || global;
-	for (var i = 0, j = this.length; i < j; ++i) {
-		if (fn.call(scope, this[i], i, this)) {
-			return true;
-		}
-	}
-	return false;
-});
-
-//Dear IE8: I hate you.
-var specialKeys = 'toString valueOf'.split(' ');
-var objectKeys = ifNative(Object.keys) || function (a) {
-	var ret = [];
-	for (var i in a)
-		if (a.hasOwnProperty(i))
-			ret.push(i);
-	each(specialKeys, function (key) {
-		if (a[key] !== Object.prototype[key])
-			ret.push(key);
-	});
-	return ret;
-};
-
+},
+	each = proxy(Array.prototype.forEach),
+	map = proxy(Array.prototype.map),
+	some = proxy(Array.prototype.some),
+	objectKeys = Object.keys;
 function extend(a) {
 	each(arguments, function (b, i) {
 		if (i === 0) return;
@@ -485,39 +446,4 @@ var Razor = {
 	basePage: basePage, Cmd: Cmd, extend: extend,
 	render: function (markup, model, page) { return compile(markup)(model, page); }
 };
-Razor.findView = function findViewInFileSystem(viewName, cb) {
-  var fs = require('fs');
-  if (!viewName.match(/\w+\.\w+$/i))
-    viewName += '.jshtml';
-  viewName = './' + viewName;
-
-  var done = function (err, data) {
-    if (err) {
-      console.error("Could not open file: %s", err);
-      process.exit(1);
-    }
-
-    if(cb) cb(data.toString('utf-8'));
-  };
-
-  if(cb) return void fs.readFile(viewName, done);
-  fs.readFileSync(viewName, done);
-};
-
-var wrapper;
-Razor.precompile = function(code, page) {
-  if(!page) page = {}; 
-  code = 'var page1 = ' + JSON.stringify(page) + 
-    ', func = function(){ ' + Razor.parse(code) + ' }';
-  if(!wrapper) wrapper = Razor.compile('');
-
-  code = code
-    .replace(/(\W)extend(\W)/, '$1Razor.extend$2')
-    .replace(/(\W)basePage(\W)/, '$1Razor.basePage$2');
-
-  code = '(function(){ \n' + code + ' return ' + wrapper + '; })()';
-  return code;
-};
-
-module.Razor = module.exports = Razor; 
 })(global, module);
