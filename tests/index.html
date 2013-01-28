@@ -58,6 +58,8 @@
 		});
 
 		test('Views', function () {
+			equal(Razor.view('test-page-w-layout')().trim().split(/\s+/g).join('\n'), '<a>test!</a>\n<a>body!</a>', 'layouts');
+
 			equal(Razor.view('test')({ name: 'world' }).trim(), 'Hello world', 'basic "hello world"');
 			equal(Razor.view('test-partial')({ name: 'world' }).trim(), 'Hello world', 'renderPartial');
 			equal(Razor.view('test-helper')({}).trim(), '<div>Hello world</div>', 'complex helper');
@@ -88,6 +90,20 @@
 	</script> 
 	<script type="application/x-razor-js" data-view-id="test-partial">
 		@html.renderPartial('test', model)
+	</script>
+
+	<script type="application/x-razor-js" data-view-id="test-layout">
+		@page.renderSection('test');
+		@page.renderBody()
+	</script>
+	<script type="application/x-razor-js" data-view-id="test-page-w-layout">
+		@{
+			page.layout = 'test-layout';
+		}
+		<a>body!</a>
+		@section test(){
+			<a>test!</a>
+		}
 	</script>
 </body>
 </html>
