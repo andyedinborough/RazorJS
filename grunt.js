@@ -80,5 +80,5 @@ module.exports = function(grunt) {
     uglify: {}
   });
 
-  grunt.registerTask('default', 'concat lint min');
+  grunt.registerTask('default', 'concat lint min qunit');
 };
