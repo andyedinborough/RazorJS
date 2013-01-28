@@ -192,14 +192,7 @@ var htmlHelper = {
 	writeLiteral: function(txt){ 
 		this.writer.push(txt); 
 	},
-	sections: {},
-	renderSection: function(name, required) {
-		if(typeof this.sections[name] === 'function') {
-			return this.html.raw(this.sections[name]());
-		} else if(required) {
-			throw 'Section "' + name + '" not found.';
-		}
-	}
+	sections: {}
 };
 
 function compile(code, page) {
@@ -214,14 +207,27 @@ function compile(code, page) {
 		if(!cb && typeof page === 'function') {
 			return execute(code, null, page);
 		}
-		var ctx = extend(page1 || {}, basePage, page, { model: model, writer:[] }),
+		var ctx = extend({ writer:[] }, page1 || {}, basePage, page, { model: model }),
 			result = func.apply(ctx);
 
 		if(ctx.layout) {
 			Razor.view(ctx.layout, null, function(view) {
+				var writer = [];
+				ctx.writeLiteral = function(val){ writer.push(val); };
 				result = view(null, {
+					writer: writer,
 					sections: extend({}, ctx.sections),
-					renderBody: function(){ return result; }
+					isSectionDefined: function(name) {
+						return !!this.sections[name];
+					},
+					renderBody: function(){ return this.html.raw(result); },
+					renderSection: function(name, required) {
+						if(typeof this.sections[name] === 'function') {
+							return this.html.raw(this.sections[name]());
+						} else if(required) {
+							throw 'Section "' + name + '" not found.';
+						}
+					}
 				});
 				if(cb) {
 					cb(result);

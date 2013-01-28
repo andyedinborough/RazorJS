@@ -271,9 +271,10 @@ function parse(template) {
 						}
 					}
 
-					var parsed = parse(block.substr(0, block.length - 1), level + 1, 1).join('\n') + '}';
+					var parsed = parse(block.substr(0, block.length - 1), level + 1, 1).join('\n') + '}',
+						paren = parsed.indexOf('(');
 					if (peek === 'h') helpers.push('function ' + parsed.substr(7));
-					else if (peek === 's') sections.push('function _section_' + parsed.substr(8));
+					else if (peek === 's') sections.push('page.sections.' + parsed.substr(8, paren - 8) + ' = function' + parsed.substr(paren));
 					else cmds.push(parsed);
 
 				} else if (peek && !rxValid.test(last(chunk.value))) {
@@ -400,7 +401,8 @@ var htmlHelper = {
 	},
 	writeLiteral: function(txt){ 
 		this.writer.push(txt); 
-	}
+	},
+	sections: {}
 };
 
 function compile(code, page) {
@@ -411,9 +413,38 @@ function compile(code, page) {
 		global.console.error(x.message + ': ' + parsed);
 		throw x.message + ': ' + parsed;
 	}
-	return function (model, page1) {
-		var ctx = extend(page1 || {}, basePage, page, { model: model, writer:[] });
-		return func.apply(ctx);
+	return function execute(model, page1, cb) {
+		if(!cb && typeof page === 'function') {
+			return execute(code, null, page);
+		}
+		var ctx = extend({ writer:[] }, page1 || {}, basePage, page, { model: model }),
+			result = func.apply(ctx);
+
+		if(ctx.layout) {
+			Razor.view(ctx.layout, null, function(view) {
+				var writer = [];
+				ctx.writeLiteral = function(val){ writer.push(val); };
+				result = view(null, {
+					writer: writer,
+					sections: extend({}, ctx.sections),
+					isSectionDefined: function(name) {
+						return !!this.sections[name];
+					},
+					renderBody: function(){ return this.html.raw(result); },
+					renderSection: function(name, required) {
+						if(typeof this.sections[name] === 'function') {
+							return this.html.raw(this.sections[name]());
+						} else if(required) {
+							throw 'Section "' + name + '" not found.';
+						}
+					}
+				});
+				if(cb) {
+					cb(result);
+				}
+			});
+		}
+		return result;
 	};
 }
 
@@ -425,17 +456,15 @@ function view(id, page, cb) {
 
 	var template = views['~/' + id];
 	if (!template) {
-		var done = function(script){
+		var result;
+		Razor.findView(id, function(script){
 			if (script) {
-				views['~/' + id] = Razor.compile(script, page);
+				result = views['~/' + id] = Razor.compile(script, page);
 				return view(id, page, cb);
 			}
-		};
+		});
+		return result;
 
-		var result = Razor.findView(id, cb ? done : undefined);
-		if (result) {
-			return views['~/' + id] = Razor.compile(result, page);
-		}
 	} else if (cb) {
 		return void cb(template);
 	} else return template;
