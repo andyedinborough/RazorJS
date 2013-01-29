@@ -87,6 +87,10 @@
 			equal(encode(encode('<test>')) + '', '&lt;test&gt;', 'won\'t double-encode');
 			equal(Razor.compile('hello @html.raw("<test>")')(), 'hello <test>', 'won\'t encode for html.raw()');
 		});
+
+		test('To-Do', function(){
+			equal(Razor.compile('@model.forEach(function(x){ @x })')([0]).trim(), '0', 'rendering from inside an inlined-function');
+		});
 	</script>
 
 <script type="application/x-razor-js" data-view-id="basic-test">  
