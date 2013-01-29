@@ -2,6 +2,20 @@
 <html>
 <head>
 	<link href="http://code.jquery.com/qunit/qunit-git.css" rel="stylesheet" />
+	<style>
+		body {
+			font-family: sans-serif;
+		}
+		pre {
+			background: #f3f3f3;
+			margin: 5px;
+			padding: 5px;
+		}
+		h3 {
+			padding: 0;
+			margin: 1em 0 0 0;
+		}
+	</style>
 </head>
 <body>
 	<h1 id="qunit-header">Razor</h1>
@@ -13,6 +27,8 @@
 	<script src="http://code.jquery.com/jquery-latest.js"></script>
 	<script src="http://code.jquery.com/qunit/qunit-git.js"></script>
 	<script src="../bin/browser/Razor.js"></script>
+
+	<h2>Views</h2>
 
 	<script>
 		if (!String.prototype.trim)
@@ -59,11 +75,10 @@
 
 		test('Views', function () {
 			equal(Razor.view('test-page-w-layout')().trim().split(/\s+/g).join('\n'), '<a>test!</a>\n<a>body!</a>', 'layouts');
-
-			equal(Razor.view('test')({ name: 'world' }).trim(), 'Hello world', 'basic "hello world"');
+			equal(Razor.view('basic-test')({ name: 'world' }).trim(), 'Hello world', 'basic "hello world"');
 			equal(Razor.view('test-partial')({ name: 'world' }).trim(), 'Hello world', 'renderPartial');
 			equal(Razor.view('test-helper')({}).trim(), '<div>Hello world</div>', 'complex helper');
-			equal(Razor.view('test-lt')({ id: -1 }).trim(), '<div>Ok!</div>', 'view contains "<"');
+			equal(Razor.view('test-less-than')({ id: -1 }).trim(), '<div>Ok!</div>', 'view contains "<"');
 		});
 
 		test('Html Encoding', function () {
@@ -73,37 +88,70 @@
 			equal(Razor.compile('hello @html.raw("<test>")')(), 'hello <test>', 'won\'t encode for html.raw()');
 		});
 	</script>
-	<script type="application/x-razor-js" data-view-id="test">  
-		Hello @model.name
-	</script>
-	<script type="application/x-razor-js" data-view-id="test-lt">
-		@if(model.id < 0) {
-			<div>Ok!</div>
-		}
-	</script>
-	<script type="application/x-razor-js" data-view-id="test-helper">
-		@helper test(name){
-			name = name || 'world';
-			<div>Hello @name</div>
-		}
-		@test(model.name)
-	</script> 
-	<script type="application/x-razor-js" data-view-id="test-partial">
-		@html.renderPartial('test', model)
-	</script>
 
-	<script type="application/x-razor-js" data-view-id="test-layout">
-		@page.renderSection('test')
-		@page.renderBody()
-	</script>
-	<script type="application/x-razor-js" data-view-id="test-page-w-layout">
-		@{
-			page.layout = 'test-layout';
-		}
-		<a>body!</a>
-		@section test(){
-			<a>test!</a>
-		}
-	</script>
+<script type="application/x-razor-js" data-view-id="basic-test">  
+	Hello @model.name
+</script>
+<script type="application/x-razor-js" data-view-id="test-less-than">
+	@if(model.id < 0) {
+		<div>Ok!</div>
+	}
+</script>
+<script type="application/x-razor-js" data-view-id="test-helper">
+	@helper test(name){
+		name = name || 'world';
+		<div>Hello @name</div>
+	}
+	@test(model.name)
+</script> 
+<script type="application/x-razor-js" data-view-id="test-partial">
+	@html.renderPartial('basic-test', model)
+</script>
+
+<script type="application/x-razor-js" data-view-id="test-layout">
+	@page.renderSection('test')
+	@page.renderBody()
+</script>
+<script type="application/x-razor-js" data-view-id="test-page-w-layout">
+	@{
+		page.layout = 'test-layout';
+	}
+	<a>body!</a>
+	@section test(){
+		<a>test!</a>
+	}
+</script>
+
+<script>
+	(function () {
+		if(navigator.userAgent.indexOf('PhantomJS') > -1)
+			return;
+
+		$('script[data-view-id]').each(function(){
+			var self = $(this),
+				html = self.html().split('\t').join('  ');
+			html = html.substr(html.indexOf('\n') + 1);
+			$('<pre class="brush: razor">').text(html).insertAfter(self);
+			$('<h3>').text(self.data('view-id')).insertAfter(self);
+		});
+
+		document.write('<link href="http://alexgorbatchev.com/pub/sh/3_0_83/styles/shCore.css" rel="stylesheet" />');
+		document.write('<link href="http://alexgorbatchev.com/pub/sh/3_0_83/styles/shThemeDefault.css" rel="stylesheet" />');
+		document.write('<script src="http://alexgorbatchev.com/pub/sh/3_0_83/scripts/shCore.js"></sc'+'ript>');
+		document.write('<script src="shBrushRazor.js"></sc'+'ript>');
+		document.write('<script src="http://alexgorbatchev.com/pub/sh/3_0_83/scripts/shBrushXml.js"></sc'+'ript>');
+		
+		setTimeout(function retry(){
+			var sh = window.SyntaxHighlighter;
+			if(
+					!sh ||
+					!sh.brushes.Xml ||
+					!sh.brushes.Razor
+				) return void setTimeout(retry, 100);
+
+			sh.highlight();
+		}, 1);
+	})();
+</script>
 </body>
 </html>
