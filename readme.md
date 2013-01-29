@@ -191,6 +191,34 @@ Hello @title. @name.
           </td>
           <td> </td>
       </tr>
+
+      <tr>
+        <td valign="top">Partials </td>
+        <td>
+            <pre>
+@html.renderPartial('another-view')
+</pre>              
+        </td>
+      </tr>
+
+      <tr>
+        <td valign="top">Layouts </td>
+        <td>
+            <strong>View</strong>
+            <pre>
+@{ this.layout = '_layout'; } 
+
+@section my_section(){
+  @:hi!
+}             
+</pre>              
+            <strong>Layout</strong>
+            <pre>
+  @this.renderBody()
+  @this.renderSection('my_section')
+</pre>              
+        </td>
+      </tr>
 	</tbody>
 </table>            
 
