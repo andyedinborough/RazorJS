@@ -1,8 +1,8 @@
 Razor.findView = function findViewInFileSystem(viewName, cb) {
   var fs = require('fs');
   if (!viewName.match(/\w+\.\w+$/i))
-    viewName += '.jshtml';
-  viewName = './' + viewName;
+    viewName += '.html';
+  viewName = './views/' + viewName;
 
   var done = function (err, data) {
     if (err) {

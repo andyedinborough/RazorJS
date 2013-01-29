@@ -1,5 +1,5 @@
 /*
-  razorjs 0.1.2 <https://github.com/andyedinborough/RazorJS>
+  razorjs 0.2.0 <https://github.com/andyedinborough/RazorJS>
   Copyright (c) 2013 Andy Edinborough (@andyedinborough)
 
   Released under MIT License
@@ -441,7 +441,17 @@ var htmlHelper = {
 	writeLiteral: function(txt){ 
 		this.writer.push(txt); 
 	},
-	sections: {}
+	sections: {},
+	isSectionDefined: function(name) {
+		return typeof this.sections[name] === 'function';
+	},
+	renderSection: function(name, required) {
+		if(this.isSectionDefined(name)) {
+			return htmlString(this.sections[name]());
+		} else if(required) {
+			throw 'Section "' + name + '" not found.';
+		}
+	}
 };
 
 function compile(code, page) {
@@ -453,8 +463,8 @@ function compile(code, page) {
 		throw x.message + ': ' + parsed;
 	}
 	return function execute(model, page1, cb) {
-		if(!cb && typeof page === 'function') {
-			return execute(code, null, page);
+		if(!cb && typeof page1 === 'function') {
+			return execute(model, null, page1);
 		}
 		var ctx = extend({ writer:[] }, page1 || {}, basePage, page, { model: model }),
 			result = func.apply(ctx);
@@ -466,17 +476,7 @@ function compile(code, page) {
 				result = view(null, {
 					writer: writer,
 					sections: extend({}, ctx.sections),
-					isSectionDefined: function(name) {
-						return !!this.sections[name];
-					},
-					renderBody: function(){ return this.html.raw(result); },
-					renderSection: function(name, required) {
-						if(typeof this.sections[name] === 'function') {
-							return this.html.raw(this.sections[name]());
-						} else if(required) {
-							throw 'Section "' + name + '" not found.';
-						}
-					}
+					renderBody: function(){ return htmlString(result); }
 				});
 				if(cb) {
 					cb(result);
