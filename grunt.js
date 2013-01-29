@@ -11,17 +11,17 @@ module.exports = function(grunt) {
       '  Copyright (c) <%= grunt.template.today("yyyy") %> <%= pkg.author.name %>' +
       '\n\n  Released under <%= _.pluck(pkg.licenses, "type").join(", ") %> License\n*/',
       node: {
-        pre: '(function(global, module, undefined){',
+        pre: '(function(global, module, undefined){\n"use strict";\n',
         post: '})(global, module);'
       },
       browser: {
-        pre: '(function(global, undefined){',
+        pre: '(function(global, undefined){\n"use strict";\n',
         post: '})(window);'
       }
     },
 
     lint: {
-      files: ['bin/browser/<%= pkg.name %>.js', 'bin/node/<%= pkg.name %>.js']
+      files: ['<config:concat.browser.dest>', '<config:concat.node.dest>']
     },
 
     qunit: {
@@ -72,7 +72,10 @@ module.exports = function(grunt) {
     jshint: {
       options: {
         curly: false,
-        boss: true
+        boss: true,
+        evil: true,
+        browser: true,
+        node: true
       },
       globals: { }
     },
@@ -80,5 +83,6 @@ module.exports = function(grunt) {
     uglify: {}
   });
 
+  grunt.registerTask('build', 'concat lint min');
   grunt.registerTask('default', 'concat lint min qunit');
 };

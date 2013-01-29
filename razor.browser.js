@@ -1,8 +1,6 @@
 var scripts = global.document.getElementsByTagName('script');
 Razor.findView = function findViewInDocument(id, cb) {
-	var script;
-	for(var i = 0, ii = scripts.length; i<ii; i++){
-		script = scripts[i];	
+	for(var i = 0, ii = scripts.length, script; i < ii && (script = scripts[i]); i++){
 		if(script.type === 'application/x-razor-js' &&
 			script.getAttribute('data-view-id') === id) {
 				if(typeof cb === 'function') cb(script.innerHTML);

@@ -249,14 +249,14 @@ function view(id, page, cb) {
 		var result;
 		Razor.findView(id, function(script){
 			if (script) {
-				result = views['~/' + id] = Razor.compile(script, page);
-				return view(id, page, cb);
-			}
+				template = views['~/' + id] = Razor.compile(script, page);
+				return cb(template);
+			} else cb(undefined);
 		});
-		return result;
+		return template;
 
 	} else if (cb) {
-		return void cb(template);
+		cb(template);
 	} else return template;
 }
 

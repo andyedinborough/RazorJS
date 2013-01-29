@@ -6,6 +6,8 @@
 */
 
 (function(global, module, undefined){
+"use strict";
+
 
 var proxy = function (func) {
 	return function (obj, arg) { return func.apply(obj, [arg]); };
@@ -459,14 +461,14 @@ function view(id, page, cb) {
 		var result;
 		Razor.findView(id, function(script){
 			if (script) {
-				result = views['~/' + id] = Razor.compile(script, page);
-				return view(id, page, cb);
-			}
+				template = views['~/' + id] = Razor.compile(script, page);
+				return cb(template);
+			} else cb(undefined);
 		});
-		return result;
+		return template;
 
 	} else if (cb) {
-		return void cb(template);
+		cb(template);
 	} else return template;
 }
 
@@ -475,39 +477,37 @@ var Razor = {
 	basePage: basePage, Cmd: Cmd, extend: extend,
 	render: function (markup, model, page) { return compile(markup)(model, page); }
 };
-Razor.findView = function findViewInFileSystem(viewName, cb) {
-  var fs = require('fs');
-  if (!viewName.match(/\w+\.\w+$/i))
-    viewName += '.html';
-  viewName = './views/' + viewName;
-
-  var done = function (err, data) {
-    if (err) {
-      console.error("Could not open file: %s", err);
-      process.exit(1);
-    }
-
-    if(cb) cb(data.toString('utf-8'));
-  };
-
-  if(cb) return void fs.readFile(viewName, done);
-  fs.readFileSync(viewName, done);
-};
-
 var wrapper;
-Razor.precompile = function(code, page) {
-  if(!page) page = {}; 
-  code = 'var page1 = ' + JSON.stringify(page) + 
-    ', func = function(){ ' + Razor.parse(code) + ' }';
-  if(!wrapper) wrapper = Razor.compile('');
 
-  code = '(function(){ ' + code + ';\nreturn ' + wrapper + '; })()';
-  code = code
-    .replace(/(\W)extend(\W)/g, '$1Razor.extend$2')
-    .replace(/(\W)basePage(\W)/g, '$1Razor.basePage$2');
+extend(Razor, {
+  getViewFile: function (viewName) {
+    if (!viewName.match(/\w+\.\w+$/i))
+      viewName += '.html';
+    viewName = './views/' + viewName;
+    return viewName;
+  },
 
-  return code;
-};
+  findView: function (viewName, cb) {
+    var fs = require('fs'), file = Razor.getViewFile(viewName);
+    fs.readFile(file, function (err, data) {
+      cb(err ? undefined : data.toString('utf-8'));
+    });
+  },
+
+  precompile: function(code, page) {
+    if(!page) page = {}; 
+    code = 'var page1 = ' + JSON.stringify(page) + 
+      ', func = function(){ ' + Razor.parse(code) + ' }';
+    if(!wrapper) wrapper = Razor.compile('');
+
+    code = '(function(){ ' + code + ';\nreturn ' + wrapper + '; })()';
+    code = code
+      .replace(/(\W)extend(\W)/g, '$1Razor.extend$2')
+      .replace(/(\W)basePage(\W)/g, '$1Razor.basePage$2');
+
+    return code;
+  }
+});
 
 module.Razor = module.exports = Razor; 
 })(global, module);

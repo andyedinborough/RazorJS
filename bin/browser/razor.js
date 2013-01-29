@@ -6,6 +6,8 @@
 */
 
 (function(global, undefined){
+"use strict";
+
 
 function ifNative(func) {
 	if (func && (func+'').indexOf('[native code]') > -1)
@@ -498,14 +500,14 @@ function view(id, page, cb) {
 		var result;
 		Razor.findView(id, function(script){
 			if (script) {
-				result = views['~/' + id] = Razor.compile(script, page);
-				return view(id, page, cb);
-			}
+				template = views['~/' + id] = Razor.compile(script, page);
+				return cb(template);
+			} else cb(undefined);
 		});
-		return result;
+		return template;
 
 	} else if (cb) {
-		return void cb(template);
+		cb(template);
 	} else return template;
 }
 
@@ -516,9 +518,7 @@ var Razor = {
 };
 var scripts = global.document.getElementsByTagName('script');
 Razor.findView = function findViewInDocument(id, cb) {
-	var script;
-	for(var i = 0, ii = scripts.length; i<ii; i++){
-		script = scripts[i];	
+	for(var i = 0, ii = scripts.length, script; i < ii && (script = scripts[i]); i++){
 		if(script.type === 'application/x-razor-js' &&
 			script.getAttribute('data-view-id') === id) {
 				if(typeof cb === 'function') cb(script.innerHTML);
