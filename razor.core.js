@@ -250,8 +250,8 @@ function view(id, page, cb) {
 		Razor.findView(id, function(script){
 			if (script) {
 				template = views['~/' + id] = Razor.compile(script, page);
-				return cb(template);
-			} else cb(undefined);
+			} 
+			if (cb) cb(template);
 		});
 		return template;
 
