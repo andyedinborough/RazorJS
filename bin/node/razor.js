@@ -477,7 +477,7 @@ var Razor = {
 	view: view, compile: compile, parse: parse, findView: null,
 	basePage: basePage, Cmd: Cmd, extend: extend,
 	render: function (markup, model, page) { return compile(markup)(model, page); },
-	getViewEtag: function(viewName){ return viewName; },
+	getViewEtag: null,
 	views: views, etags: etags, cacheDisabled: false
 };
 var wrapper;

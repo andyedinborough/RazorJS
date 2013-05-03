@@ -43,7 +43,7 @@ module.exports = function(grunt) {
           'reader.js',
           'razor.core.js',
           'razor.browser.js', 
-          'banners/node-post.js',
+          'banners/browser-post.js',
         ],
         dest: 'bin/browser/razor.js'
       }
