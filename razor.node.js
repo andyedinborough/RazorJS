@@ -14,6 +14,13 @@ extend(Razor, {
       cb(err ? undefined : data.toString('utf-8'));
     });
   },
+	
+	getViewEtag: function(viewName){ 
+    var fs = require('fs'), 
+			file = Razor.getViewFile(viewName),
+			stat = fs.fstatSync(file);
+		return stat.mtime + '';
+	},
 
   precompile: function(code, page) {
     if(!page) page = {}; 

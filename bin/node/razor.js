@@ -1,14 +1,10 @@
 /*
-  razorjs 0.2.0 <https://github.com/andyedinborough/RazorJS>
+  razorjs 0.2.1 <https://github.com/andyedinborough/RazorJS>
   Copyright (c) 2013 Andy Edinborough (@andyedinborough)
-
   Released under MIT License
 */
-
 (function(global, module, undefined){
-"use strict";
-
-
+	"use strict";
 var proxy = function (func) {
 	return function (obj, arg) { return func.apply(obj, [arg]); };
 },
@@ -450,18 +446,23 @@ function compile(code, page) {
 	};
 }
 
-var views = {};
+var views = {}, etags = {};
 function view(id, page, cb) {
 	if(!cb && typeof page === 'function') {
 		return view(id, undefined, page);
 	}
 
-	var template = views['~/' + id];
-	if (!template) {
+	var key = '~/' + id,
+		template = views[key], 
+		etag0 = etags[key],
+		etag = Razor.getViewEtag(id);
+	
+	if (!template || etag !== etag0 || Razor.cacheDisabled) {
 		var result;
 		Razor.findView(id, function(script){
 			if (script) {
-				template = views['~/' + id] = Razor.compile(script, page);
+				template = views[key] = Razor.compile(script, page);
+				etags[key] = etag;
 			} 
 			if (cb) cb(template);
 		});
@@ -475,7 +476,9 @@ function view(id, page, cb) {
 var Razor = {
 	view: view, compile: compile, parse: parse, findView: null,
 	basePage: basePage, Cmd: Cmd, extend: extend,
-	render: function (markup, model, page) { return compile(markup)(model, page); }
+	render: function (markup, model, page) { return compile(markup)(model, page); },
+	getViewEtag: function(viewName){ return viewName; },
+	views: views, etags: etags, cacheDisabled: false
 };
 var wrapper;
 
@@ -493,6 +496,13 @@ extend(Razor, {
       cb(err ? undefined : data.toString('utf-8'));
     });
   },
+	
+	getViewEtag: function(viewName){ 
+    var fs = require('fs'), 
+			file = Razor.getViewFile(viewName),
+			stat = fs.fstatSync(file);
+		return stat.mtime + '';
+	},
 
   precompile: function(code, page) {
     if(!page) page = {}; 

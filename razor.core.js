@@ -238,18 +238,23 @@ function compile(code, page) {
 	};
 }
 
-var views = {};
+var views = {}, etags = {};
 function view(id, page, cb) {
 	if(!cb && typeof page === 'function') {
 		return view(id, undefined, page);
 	}
 
-	var template = views['~/' + id];
-	if (!template) {
+	var key = '~/' + id,
+		template = views[key], 
+		etag0 = etags[key],
+		etag = Razor.getViewEtag(id);
+	
+	if (!template || etag !== etag0 || Razor.cacheDisabled) {
 		var result;
 		Razor.findView(id, function(script){
 			if (script) {
-				template = views['~/' + id] = Razor.compile(script, page);
+				template = views[key] = Razor.compile(script, page);
+				etags[key] = etag;
 			} 
 			if (cb) cb(template);
 		});
@@ -263,5 +268,7 @@ function view(id, page, cb) {
 var Razor = {
 	view: view, compile: compile, parse: parse, findView: null,
 	basePage: basePage, Cmd: Cmd, extend: extend,
-	render: function (markup, model, page) { return compile(markup)(model, page); }
+	render: function (markup, model, page) { return compile(markup)(model, page); },
+	getViewEtag: null,
+	views: views, etags: etags, cacheDisabled: false
 };

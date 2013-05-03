@@ -2,12 +2,20 @@
   "title": "razorjs",
   "name": "razorjs",
   "description": "Razor inspired view-engine",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": {
-    "name":"Andy Edinborough (@andyedinborough)"
+    "name": "Andy Edinborough (@andyedinborough)"
   },
   "homepage": "https://github.com/andyedinborough/RazorJS",
-  "licenses": [{
-    "type": "MIT"
-  }]
+  "licenses": [
+    {
+      "type": "MIT"
+    }
+  ],
+  "devDependencies": {
+    "grunt-contrib-uglify": "~0.2.0",
+    "grunt-contrib-concat": "~0.3.0",
+    "grunt-contrib-jshint": "~0.4.3",
+    "grunt-contrib-qunit": "~0.2.1"
+  }
 }
