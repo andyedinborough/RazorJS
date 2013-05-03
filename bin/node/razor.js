@@ -442,7 +442,10 @@ function compile(code, page) {
 				}
 			});
 		}
-		return result;
+		
+		if(!cb) {
+			return result;
+		}
 	};
 }
 
@@ -476,7 +479,9 @@ function view(id, page, cb) {
 var Razor = {
 	view: view, compile: compile, parse: parse, findView: null,
 	basePage: basePage, Cmd: Cmd, extend: extend,
-	render: function (markup, model, page) { return compile(markup)(model, page); },
+	render: function (markup, model, page) {
+		return compile(markup)(model, page); 
+	},
 	getViewEtag: null,
 	views: views, etags: etags, cacheDisabled: false
 };
@@ -484,9 +489,12 @@ var wrapper;
 
 extend(Razor, {
   getViewFile: function (viewName) {
-    if (!viewName.match(/\w+\.\w+$/i))
+    if (!viewName.match(/\w+\.\w+$/i)) {
       viewName += '.html';
-    viewName = './views/' + viewName;
+		}
+		if(!~viewName.indexOf(':') && !(/^\.?\//).test(viewName)) {
+			viewName = './views/' + viewName;
+		}
     return viewName;
   },
 
@@ -500,7 +508,7 @@ extend(Razor, {
 	getViewEtag: function(viewName){ 
     var fs = require('fs'), 
 			file = Razor.getViewFile(viewName),
-			stat = fs.fstatSync(file);
+			stat = fs.statSync(file);
 		return stat.mtime + '';
 	},
 

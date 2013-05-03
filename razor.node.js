@@ -2,9 +2,12 @@ var wrapper;
 
 extend(Razor, {
   getViewFile: function (viewName) {
-    if (!viewName.match(/\w+\.\w+$/i))
+    if (!viewName.match(/\w+\.\w+$/i)) {
       viewName += '.html';
-    viewName = './views/' + viewName;
+		}
+		if(!~viewName.indexOf(':') && !(/^\.?\//).test(viewName)) {
+			viewName = './views/' + viewName;
+		}
     return viewName;
   },
 
@@ -18,7 +21,7 @@ extend(Razor, {
 	getViewEtag: function(viewName){ 
     var fs = require('fs'), 
 			file = Razor.getViewFile(viewName),
-			stat = fs.fstatSync(file);
+			stat = fs.statSync(file);
 		return stat.mtime + '';
 	},
 

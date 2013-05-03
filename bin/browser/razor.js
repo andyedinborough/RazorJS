@@ -481,7 +481,10 @@ function compile(code, page) {
 				}
 			});
 		}
-		return result;
+		
+		if(!cb) {
+			return result;
+		}
 	};
 }
 
@@ -515,7 +518,9 @@ function view(id, page, cb) {
 var Razor = {
 	view: view, compile: compile, parse: parse, findView: null,
 	basePage: basePage, Cmd: Cmd, extend: extend,
-	render: function (markup, model, page) { return compile(markup)(model, page); },
+	render: function (markup, model, page) {
+		return compile(markup)(model, page); 
+	},
 	getViewEtag: null,
 	views: views, etags: etags, cacheDisabled: false
 };
