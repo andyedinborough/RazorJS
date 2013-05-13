@@ -12,7 +12,7 @@ extend(Cmd.prototype, {
 	}
 });
 
-var _function_template = '"use strict";\n#1\n#2\n#0\nreturn writer.join("");\npage.layout = layout;';
+var _function_template = '"use strict";\nvar _layout = this.layout, layout;\n#1\n#2\n#0\nif(_layout !== layout) { this.layout = layout; }\nreturn writer.join("");';
 
 function parse(template) {
 	var rdr = new Reader(template),
@@ -208,7 +208,7 @@ var htmlHelper = {
 function compile(code, page) {
 	var func, parsed = parse(code);
 	try {
-		func = new Function('page', 'model', 'html', 'writer', 'viewBag', 'layout', 'isSectionDefined', 'renderSection', 'renderBody', 'undefined', parsed);
+		func = new Function('page', 'model', 'html', 'writer', 'viewBag', 'isSectionDefined', 'renderSection', 'renderBody', 'undefined', parsed);
 	} catch (x) {
 		global.console.error(x.message + ': ' + parsed);
 		throw x.message + ': ' + parsed;
@@ -220,7 +220,7 @@ function compile(code, page) {
 		
 		var ctx = extend({ writer:[], viewBag: {} }, page1 || {}, basePage, page, { model: model });		
 		var result = func.apply(ctx, [
-			ctx, ctx.model, ctx.html, ctx.writer, ctx.viewBag, ctx.layout, 
+			ctx, ctx.model, ctx.html, ctx.writer, ctx.viewBag, 
 			bind(ctx.isSectionDefined, ctx), 
 			bind(ctx.renderSection, ctx), 
 			ctx.renderBody ? bind(ctx.renderBody, ctx) : undefined
