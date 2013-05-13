@@ -48,6 +48,19 @@ module.exports = function(grunt) {
         dest: 'bin/browser/razor.js'
       }
     },
+					
+		copy: {
+			node: {
+				files: [{
+					src: 'package.json',
+					dest: 'bin/node/'
+				},
+				{
+					src: 'readme.md',
+					dest: 'bin/node/README.md'
+				}]
+			}
+		},
  
     watch: {
       files: '<config:lint.files>',
@@ -81,7 +94,8 @@ module.exports = function(grunt) {
 	grunt.loadNpmTasks('grunt-contrib-concat');
 	grunt.loadNpmTasks('grunt-contrib-jshint');
 	grunt.loadNpmTasks('grunt-contrib-qunit');
+	grunt.loadNpmTasks('grunt-contrib-copy');
 	
-  grunt.registerTask('build', ['concat', 'jshint', 'uglify']);
-  grunt.registerTask('default', ['concat', 'jshint', 'uglify', 'qunit']);
+  grunt.registerTask('build', ['concat', 'jshint', 'uglify', 'copy']);
+  grunt.registerTask('default', ['concat', 'jshint', 'uglify', 'copy', 'qunit']);
 };

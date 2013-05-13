@@ -4,4 +4,5 @@ var proxy = function (func) {
 	each = proxy(Array.prototype.forEach),
 	map = proxy(Array.prototype.map),
 	some = proxy(Array.prototype.some),
-	objectKeys = Object.keys;
+	objectKeys = Object.keys,
+	bind = proxy(Function.prototype.bind);

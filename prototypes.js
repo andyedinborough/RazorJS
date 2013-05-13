@@ -43,3 +43,7 @@ var objectKeys = ifNative(Object.keys) || function (a) {
 	});
 	return ret;
 };
+
+var bind = proxy(Function.prototype.bind || function(func, obj) {
+	return function(){ return func.apply(obj, arguments); };
+});

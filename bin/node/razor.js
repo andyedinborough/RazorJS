@@ -1,5 +1,5 @@
 /*
-  razorjs 0.2.1 <https://github.com/andyedinborough/RazorJS>
+  RazorJS 0.2.2 <https://github.com/andyedinborough/RazorJS>
   Copyright (c) 2013 Andy Edinborough (@andyedinborough)
   Released under MIT License
 */
@@ -11,7 +11,8 @@ var proxy = function (func) {
 	each = proxy(Array.prototype.forEach),
 	map = proxy(Array.prototype.map),
 	some = proxy(Array.prototype.some),
-	objectKeys = Object.keys;
+	objectKeys = Object.keys,
+	bind = proxy(Function.prototype.bind);
 function extend(a) {
 	each(arguments, function (b, i) {
 		if (i === 0) return;
@@ -220,7 +221,7 @@ extend(Cmd.prototype, {
 	}
 });
 
-var _function_template = 'var page = this, writer = page.writer, model = page.model, html = page.html;\n#1\n#2\n#0\nreturn writer.join("");';
+var _function_template = '"use strict";\n#1\n#2\n#0\nreturn writer.join("");\npage.layout = layout;';
 
 function parse(template) {
 	var rdr = new Reader(template),
@@ -416,7 +417,7 @@ var htmlHelper = {
 function compile(code, page) {
 	var func, parsed = parse(code);
 	try {
-		func = new Function(parsed);
+		func = new Function('page', 'model', 'html', 'writer', 'viewBag', 'layout', 'isSectionDefined', 'renderSection', 'renderBody', 'undefined', parsed);
 	} catch (x) {
 		global.console.error(x.message + ': ' + parsed);
 		throw x.message + ': ' + parsed;
@@ -425,8 +426,14 @@ function compile(code, page) {
 		if(!cb && typeof page1 === 'function') {
 			return execute(model, null, page1);
 		}
-		var ctx = extend({ writer:[] }, page1 || {}, basePage, page, { model: model }),
-			result = func.apply(ctx);
+		
+		var ctx = extend({ writer:[], viewBag: {} }, page1 || {}, basePage, page, { model: model });		
+		var result = func.apply(ctx, [
+			ctx, ctx.model, ctx.html, ctx.writer, ctx.viewBag, ctx.layout, 
+			bind(ctx.isSectionDefined, ctx), 
+			bind(ctx.renderSection, ctx), 
+			ctx.renderBody ? bind(ctx.renderBody, ctx) : undefined
+		]);
 
 		if(ctx.layout) {
 			Razor.view(ctx.layout, null, function(view) {
@@ -435,7 +442,8 @@ function compile(code, page) {
 				result = view(null, {
 					writer: writer,
 					sections: extend({}, ctx.sections),
-					renderBody: function(){ return htmlString(result); }
+					renderBody: function(){ return htmlString(result); },
+					viewBag: ctx.viewBag
 				});
 				if(cb) {
 					cb(result);
@@ -478,9 +486,14 @@ function view(id, page, cb) {
 
 var Razor = {
 	view: view, compile: compile, parse: parse, findView: null,
-	basePage: basePage, Cmd: Cmd, extend: extend,
-	render: function (markup, model, page) {
-		return compile(markup)(model, page); 
+	basePage: basePage, Cmd: Cmd, extend: extend, bind: bind,
+	render: function (markup, model, page, cb) {
+		var result;
+		compile(markup)(model, page, function(html) {
+			result = html;
+			if(cb) cb(result);			
+		}); 
+		return result;
 	},
 	getViewEtag: null,
 	views: views, etags: etags, cacheDisabled: false
