@@ -216,17 +216,19 @@ extend(Cmd.prototype, {
 	toString: function () {
 		var code = this.code;
 		if (this.type === 0) return code;
-		if (this.type === 2) return "page.writeLiteral(\"" + doubleEncode(code) + "\");";
-		return 'page.write(' + code + ');';
+		if (this.type === 2) return "writeLiteral(\"" + doubleEncode(code) + "\");";
+		return 'write(' + code + ');';
 	}
 });
 
-var _function_template = '"use strict";\n#3\n' +
-	'var page = this, model = page.model, viewBag = this.viewBag, writer = this.writer, html = this.html;\n' + 
-	'var isSectionDefined = this.isSectionDefined ? bind(this.isSectionDefined, this) : undefined;\n' +
-	'var renderSection = this.renderSection ? bind(this.renderSection, this) : undefined;\n' +
-	'var renderBody = this.renderBody ? bind(this.renderBody, this) : undefined;\n' +
-	'#1\n#2\n#0\n#4\nreturn writer.join("");';
+var _function_template = '"use strict";\n' +
+	'var writer = [], page = this, model = page.model, viewBag = this.viewBag, html = this.html,\n' + 
+	'	isSectionDefined = this.isSectionDefined ? bind(this.isSectionDefined, this) : undefined,\n' +
+	'	renderSection = this.renderSection ? bind(this.renderSection, this) : undefined,\n' +
+	'	renderBody = this.renderBody ? bind(this.renderBody, this) : undefined,\n' +
+	'	writeLiteral = function(a){ writer.push(a); }, write = function(a){ writeLiteral(html.encode(a)); },\n' +
+	'	_layout = this.layout, layout;\n' +
+	'@code\nif(_layout !== layout) { this.layout = layout; }\nreturn writer.join("");\n';
 
 function parse(template) {
 	var rdr = new Reader(template),
@@ -275,20 +277,15 @@ function parse(template) {
 						}
 					}
 
-					var parsed = parse(block.substr(0, block.length - 1), level + 1, 1).join('\n') + '}',
+					var parsed = parse(block.substr(0, block.length - 1), level + 1, 1).join('\r\n\t') + '}',
 						paren = parsed.indexOf('('),
 						bracket = parsed.indexOf('{');
 					if (paren === -1 || bracket< paren) paren = bracket;
 					if (peek === 'h') helpers.push('function ' + parsed.substr(7));
 					else if (peek === 's') sections.push('page.sections.' + parsed.substr(8, paren - 8) + ' = function () {' + 
-						_function_template
-							.replace('#1', '')
-							.replace('#2', '')
-							.replace('#3', '')
-							.replace('#4', '')
-							.replace('#5', '')
-							.replace('#0', parsed.substr(bracket + 1))
-						
+							'var writer = [], writeLiteral = function(a) { writer.push(a); }, write = function(a){ writeLiteral(page.html.encode(a)); };\n' +
+							parsed.substr(bracket + 1).replace(/}$/g, '') +
+							'\nreturn writer.join("");\n}\n'
 						);
 					else cmds.push(parsed);
 
@@ -382,11 +379,7 @@ function parse(template) {
 	if (level > 0) return cmds;
 	template = cmds.join('\r\n');
 	template = _function_template
-			.replace('#0', template)
-			.replace('#1', map(helpers, returnEmpty).join('\r\n'))
-			.replace('#2', map(sections, returnEmpty).join('\r\n'))
-			.replace('#3', 'var _layout = this.layout, layout;')
-			.replace('#4', 'if(_layout !== layout) { this.layout = layout; }');
+			.replace('@code', map(helpers, returnEmpty).join('\r\n') + '\r\n' + map(sections, returnEmpty).join('\r\n') + template);
 	return template;
 }
 
@@ -419,12 +412,6 @@ extend(HtmlHelper.prototype, {
 var basePage = {
 	html: new HtmlHelper(),
 	sections: {},
-	write: function (txt){ 
-		this.writeLiteral(this.html.encode(txt)); 
-	},
-	writeLiteral: function(txt){ 
-		this.writer.push(txt); 
-	}
 };
 
 function compile(code, page) {
@@ -440,7 +427,7 @@ function compile(code, page) {
 			return execute(model, null, page1);
 		}
 		
-		var ctx = extend({ writer: [], viewBag: {} }, basePage, page, page1, { model: model });
+		var ctx = extend({ viewBag: {} }, basePage, page, page1, { model: model });
 		ctx.html = new HtmlHelper();
 		ctx.html.page = ctx;
 		ctx.html.model = model;
@@ -457,8 +444,7 @@ function compile(code, page) {
 						},
 						renderSection: function(name, required) {
 							if(this.isSectionDefined(name)) {
-								console.log(ctx.sections[name]+'');
-								var temp = htmlString(ctx.sections[name].apply(ctx,[bind]));
+								var temp = htmlString(ctx.sections[name]());
 								return temp;
 								
 							} else if(required) {
