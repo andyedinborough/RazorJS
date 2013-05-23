@@ -34,39 +34,7 @@
 		if (!String.prototype.trim)
 			String.prototype.trim = function () {
 				return this.replace(/^\s+|\s+$/g, '');
-			};
-
-		test('Basic Parsing', function () {
-			equal(Razor.compile('@{ <a b=@0 c=@1> </a> }')().trim(), '<a b=0 c=1> </a>', 'multiple code snippets in a tag opener inside a code block');
-			equal(Razor.compile('test\\test')().trim(), 'test\\test', '\\ needs to be double-encoded');
-
-			equal(Razor.compile('@if(true) { if(true){ <a @(0>1?0:1) /> } }')().trim(), '<a 1 />', 'ternary inside tag inside nested if');
-			equal(Razor.compile('@if(true) { if(true){ <a @(0>1?0:1) /> <a> </a> } }')().trim(), '<a 1 /><a> </a>', 'ternary inside tag inside nested if followed by another tag');
-
-			equal(Razor.compile('@{ model.items.forEach(function(x){ @x }); }')({ items: [0] }), '0', 'forEach');
-			equal(Razor.compile('test')(), 'test', 'no razor');
-			equal(Razor.compile('test@test.com')(), 'test@test.com', 'email address');
-			equal(Razor.compile('test@@@(model.test).com')({ test: 'test' }), 'test@test.com', 'explicit code');
-			equal(Razor.compile('hello @model.name')({ name: 'world' }), 'hello world', 'model');
-			equal(Razor.compile('hello @model.name[0]')({ name: 'world'.split('') }), 'hello w', 'model w/ indexers');
-			equal(Razor.compile('hello @model.name("world")')({ name: function (n) { return n; } }), 'hello world', 'model w/ method');
-			equal(Razor.compile('te@*FAIL*@st')(), 'test', 'comment');
-			equal(Razor.compile('@if(model.name){ @model.name }')({ name: 'test' }), 'test', 'if statement');
-			equal(Razor.compile('@if(!model.name){ @fail(); } else { @model.name; }')({ name: 'test' }), 'test', 'if-else statement');
-			equal(Razor.compile('@if(true){ @:test }')().trim(), 'test', 'text-mode');
-			equal(Razor.compile('@helper test(name){ @:Hi @name } @test("bob")')().trim(), 'Hi bob', 'helper');
-			equal(Razor.compile('@if(true){ <div><div>nested</div></div>  }')().trim(), '<div><div>nested</div></div>', 'nested tags inside code');
-			equal(Razor.compile('@{  }')().trim(), '', 'javascript code block');
-			equal(Razor.compile('@if(true){ <text>hi</text> }')().trim(), 'hi', 'using <text/>');
-			equal(Razor.compile('@if(true){ if(false) { @:fail } else { @:win } }')().trim(), 'win', 'nested if');
-			equal(Razor.compile('@if(true){ if(false) { @:fail } else { <div>Hi!</div> if(false) { } <div>Hi!</div> } }')().trim(), '<div>Hi!</div><div>Hi!</div>', 'nested if w/ html');
-
-			try {
-				Razor.compile('@(');
-				Razor.compile('@{');
-			} catch (x) { }
-			ok(true, 'Didn\'t crash the browser');
-		});
+			}; 
 
 		test('Views', function () {
 			equal(Razor.view('test-page-w-layout')().trim().split(/\s+/g).join('\n'), '<a>test!</a>\n<a>body!</a>', 'layouts');
@@ -74,48 +42,10 @@
 			equal(Razor.view('test-partial')({ name: 'world' }).trim(), 'Hello world', 'renderPartial');
 			equal(Razor.view('test-helper')({}).trim(), '<div>Hello world</div>', 'complex helper');
 			equal(Razor.view('test-less-than')({ id: -1 }).trim(), '<div>Ok!</div>', 'view contains "<"');
-		});
-
-		test('Html Encoding', function () {
-			var encode = Razor.basePage.html.encode;
-			equal(encode('<test>') + '', '&lt;test&gt;', 'encodes');
-			equal(encode(encode('<test>')) + '', '&lt;test&gt;', 'won\'t double-encode');
-			equal(Razor.compile('hello @html.raw("<test>")')(), 'hello <test>', 'won\'t encode for html.raw()');
-		});
-
-		test('To-Do', function(){
-			equalWarn(tryget(function(){ return Razor.compile('@model.forEach(function(x){ @x })')([0]).trim() }), '0', 'rendering from inside an inlined-function');
-		});
-
-
-		function equalWarn(a, b, msg) {
-			if(a != b) warn(msg);
-		}
-
-		function tryget(func){
-			try {
-				return func();
-			} catch (x) {
-				return null;
-			}
-		}
-
-		function warn(msg) {
-			QUnit.config.stats.warn = (QUnit.config.stats.warn || 0) + 1;
-			QUnit.config.moduleStats.warn = (QUnit.config.moduleStats.warn || 0) + 1;
-		}
+		});  
+ 
 	</script>
-	<style>
-		#qunit-tests b.warnings                     { color: #97970F; }
-		#qunit-tests li li.warning {
-		  color: #97970F;
-		  background-color: #fff;
-		  border-left: 26px solid #EEDD57;
-		  white-space: pre;
-		}
-		#qunit-tests .warning                          { color: #000000; background-color: #EEDD57; }
-		#qunit-banner.qunit-warning                    { background-color: #EEDD57; }
-	</style>
+	
 <script type="application/x-razor-js" data-view-id="basic-test">  
 	Hello @model.name
 </script>

@@ -262,7 +262,12 @@ extend(Cmd.prototype, {
 	}
 });
 
-var _function_template = '"use strict";\nvar _layout = this.layout, layout;\n#1\n#2\n#0\nif(_layout !== layout) { this.layout = layout; }\nreturn writer.join("");';
+var _function_template = '"use strict";\n#3\n' +
+	'var page = this, model = page.model, viewBag = this.viewBag, writer = this.writer, html = this.html;\n' + 
+	'var isSectionDefined = this.isSectionDefined ? bind(this.isSectionDefined, this) : undefined;\n' +
+	'var renderSection = this.renderSection ? bind(this.renderSection, this) : undefined;\n' +
+	'var renderBody = this.renderBody ? bind(this.renderBody, this) : undefined;\n' +
+	'#1\n#2\n#0\n#4\nreturn writer.join("");';
 
 function parse(template) {
 	var rdr = new Reader(template),
@@ -312,9 +317,20 @@ function parse(template) {
 					}
 
 					var parsed = parse(block.substr(0, block.length - 1), level + 1, 1).join('\n') + '}',
-						paren = parsed.indexOf('(');
+						paren = parsed.indexOf('('),
+						bracket = parsed.indexOf('{');
+					if (paren === -1 || bracket< paren) paren = bracket;
 					if (peek === 'h') helpers.push('function ' + parsed.substr(7));
-					else if (peek === 's') sections.push('page.sections.' + parsed.substr(8, paren - 8) + ' = function' + parsed.substr(paren));
+					else if (peek === 's') sections.push('page.sections.' + parsed.substr(8, paren - 8) + ' = function () {' + 
+						_function_template
+							.replace('#1', '')
+							.replace('#2', '')
+							.replace('#3', '')
+							.replace('#4', '')
+							.replace('#5', '')
+							.replace('#0', parsed.substr(bracket + 1))
+						
+						);
 					else cmds.push(parsed);
 
 				} else if (peek && !rxValid.test(last(chunk.value))) {
@@ -409,56 +425,53 @@ function parse(template) {
 	template = _function_template
 			.replace('#0', template)
 			.replace('#1', map(helpers, returnEmpty).join('\r\n'))
-			.replace('#2', map(sections, returnEmpty).join('\r\n'));
+			.replace('#2', map(sections, returnEmpty).join('\r\n'))
+			.replace('#3', 'var _layout = this.layout, layout;')
+			.replace('#4', 'if(_layout !== layout) { this.layout = layout; }');
 	return template;
 }
 
-var htmlHelper = {
-	encode: function (value) {
-		if (value === null || value === undefined) value = '';
-		if (value.isHtmlString) return value;
-		if (typeof value !== 'string') value += '';
-		value = value
-			.split('&').join('&amp;')
-			.split('<').join('&lt;')
-			.split('>').join('&gt;')
-			.split('"').join('&quot;');
-		return htmlHelper.raw(value);
-	},
+function encode(value){
+	if (value === null || value === undefined) value = '';
+	if (value.isHtmlString) return value;
+	if (typeof value !== 'string') value += '';
+	value = value
+		.split('&').join('&amp;')
+		.split('<').join('&lt;')
+		.split('>').join('&gt;')
+		.split('"').join('&quot;');
+	return htmlString(value);
+}
+
+var HtmlHelper = function(){ };
+extend(HtmlHelper.prototype, {
+	encode: encode,
 	attributeEncode: function (value) {
-		return htmlHelper.encode(value);
+		return encode(value);
 	},
 	raw: function (value) {
 		return htmlString(value);
 	},
-	renderPartial: function (view, model) {
-		return this.raw(Razor.view(view)(model));
+	renderPartial: function (view, model, page) {
+		return htmlString(Razor.view(view)(model, page || this.page));
 	}
-}, basePage = {
-	html: htmlHelper,
+});
+
+var basePage = {
+	html: new HtmlHelper(),
+	sections: {},
 	write: function (txt){ 
 		this.writeLiteral(this.html.encode(txt)); 
 	},
 	writeLiteral: function(txt){ 
 		this.writer.push(txt); 
-	},
-	sections: {},
-	isSectionDefined: function(name) {
-		return typeof this.sections[name] === 'function';
-	},
-	renderSection: function(name, required) {
-		if(this.isSectionDefined(name)) {
-			return htmlString(this.sections[name]());
-		} else if(required) {
-			throw 'Section "' + name + '" not found.';
-		}
 	}
 };
 
 function compile(code, page) {
 	var func, parsed = parse(code);
 	try {
-		func = new Function('page', 'model', 'html', 'writer', 'viewBag', 'isSectionDefined', 'renderSection', 'renderBody', 'undefined', parsed);
+		func = new Function('bind', 'undefined', parsed);
 	} catch (x) {
 		global.console.error(x.message + ': ' + parsed);
 		throw x.message + ': ' + parsed;
@@ -468,28 +481,39 @@ function compile(code, page) {
 			return execute(model, null, page1);
 		}
 		
-		var ctx = extend({ writer:[], viewBag: {} }, page1 || {}, basePage, page, { model: model });		
-		var result = func.apply(ctx, [
-			ctx, ctx.model, ctx.html, ctx.writer, ctx.viewBag, 
-			bind(ctx.isSectionDefined, ctx), 
-			bind(ctx.renderSection, ctx), 
-			ctx.renderBody ? bind(ctx.renderBody, ctx) : undefined
-		]);
+		var ctx = extend({ writer: [], viewBag: {} }, basePage, page, page1, { model: model });
+		ctx.html = new HtmlHelper();
+		ctx.html.page = ctx;
+		ctx.html.model = model;
+	
+		var result = func.apply(ctx, [bind]);
 
 		if(ctx.layout) {
-			Razor.view(ctx.layout, null, function(view) {
-				var writer = [];
-				ctx.writeLiteral = function(val){ writer.push(val); };
-				result = view(null, {
-					writer: writer,
-					sections: extend({}, ctx.sections),
-					renderBody: function(){ return htmlString(result); },
-					viewBag: ctx.viewBag
-				});
-				if(cb) {
-					cb(result);
-				}
-			});
+			var render_layout = function(layout_view){				
+				var layout_result = layout_view(null, {
+						renderBody: function(){ return htmlString(result); },
+						viewBag: ctx.viewBag,
+						isSectionDefined: function(name) {
+							return typeof ctx.sections[name] === 'function';
+						},
+						renderSection: function(name, required) {
+							if(this.isSectionDefined(name)) {
+								console.log(ctx.sections[name]+'');
+								var temp = htmlString(ctx.sections[name].apply(ctx,[bind]));
+								return temp;
+								
+							} else if(required) {
+								throw 'Section "' + name + '" not found.';
+							}
+						}
+					}, cb);	
+				if(!cb) result = layout_result;
+			};
+			
+			var layout_view = Razor.view(ctx.layout, null, cb ? render_layout : undefined);
+			if(!cb) {
+				render_layout(layout_view);
+			}
 		}
 		
 		if(!cb) {
@@ -510,14 +534,17 @@ function view(id, page, cb) {
 		etag = Razor.getViewEtag(id);
 	
 	if (!template || etag !== etag0 || Razor.cacheDisabled) {
-		var result;
-		Razor.findView(id, function(script){
-			if (script) {
-				template = views[key] = Razor.compile(script, page);
-				etags[key] = etag;
-			} 
-			if (cb) cb(template);
-		});
+		var done = function(script){
+				if (script) {
+					template = views[key] = Razor.compile(script, page);
+					etags[key] = etag;
+				} 
+				if (cb) cb(template);
+			};
+		
+		template = Razor.findView(id, cb ? done : null);
+		if(!cb) done(template);
+		
 		return template;
 
 	} else if (cb) {

@@ -87,6 +87,14 @@ module.exports = function(grunt) {
         src: ['<%= concat.browser.dest %>'],
         dest: 'bin/browser/razor.min.js'
       }									 
+		},
+		
+		nodeunit: {
+			all: [
+				'tests/parse.js',
+				'tests/encoding.js',
+				'tests/node.js'
+			]
 		}
   });
 
@@ -95,7 +103,9 @@ module.exports = function(grunt) {
 	grunt.loadNpmTasks('grunt-contrib-jshint');
 	grunt.loadNpmTasks('grunt-contrib-qunit');
 	grunt.loadNpmTasks('grunt-contrib-copy');
+	grunt.loadNpmTasks('grunt-contrib-nodeunit');
 	
   grunt.registerTask('build', ['concat', 'jshint', 'uglify', 'copy']);
-  grunt.registerTask('default', ['concat', 'jshint', 'uglify', 'copy', 'qunit']);
+	grunt.registerTask('test', ['nodeunit', 'qunit']);	
+  grunt.registerTask('default', ['build', 'test']);
 };

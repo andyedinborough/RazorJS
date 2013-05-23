@@ -13,9 +13,14 @@ extend(Razor, {
 
   findView: function (viewName, cb) {
     var fs = require('fs'), file = Razor.getViewFile(viewName);
-    fs.readFile(file, function (err, data) {
-      cb(err ? undefined : data.toString('utf-8'));
-    });
+		if(cb){
+			fs.readFile(file, function (err, data) {
+				cb(err ? undefined : data.toString('utf-8'));
+			});
+			
+		} else {
+			return fs.readFileSync(file).toString('utf-8');
+		}
   },
 	
 	getViewEtag: function(viewName){ 
