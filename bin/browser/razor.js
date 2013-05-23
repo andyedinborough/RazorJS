@@ -65,11 +65,6 @@ function extend(a) {
 	return a;
 }
 
-function returnEmpty(func) {
-	var i = func.indexOf('{');
-	return func.substr(0, i + 1) + '\r\n' + func.substring(i + 1, func.lastIndexOf('}')) + '; return ""; }';
-}
-
 function doubleEncode(txt) {
 	return txt
 		.split('\\').join('\\\\')
@@ -323,7 +318,7 @@ function parse(template) {
 						bracket = parsed.indexOf('{');
 					if (paren === -1 || bracket< paren) paren = bracket;
 					if (peek === 'h') helpers.push('function ' + parsed.substr(7));
-					else if (peek === 's') sections.push('page.sections.' + parsed.substr(8, paren - 8) + ' = function () {' + 
+					else if (peek === 's') sections.push('sections.' + parsed.substr(8, paren - 8) + ' = function () {' + 
 							'var writer = [], writeLiteral = function(a) { writer.push(a); }, write = function(a){ writeLiteral(page.html.encode(a)); };\n' +
 							parsed.substr(bracket + 1).replace(/}$/g, '') +
 							'\nreturn writer.join("");\n}\n'
@@ -420,7 +415,7 @@ function parse(template) {
 	if (level > 0) return cmds;
 	template = cmds.join('\r\n');
 	template = _function_template
-			.replace('@code', map(helpers, returnEmpty).join('\r\n') + '\r\n' + map(sections, returnEmpty).join('\r\n') + template);
+			.replace('@code', helpers.join('\r\n') + '\r\n' + sections.join('\r\n') + template);
 	return template;
 }
 
@@ -451,14 +446,13 @@ extend(HtmlHelper.prototype, {
 });
 
 var basePage = {
-	html: new HtmlHelper(),
-	sections: {},
+	html: new HtmlHelper()
 };
 
 function compile(code, page) {
-	var func, parsed = parse(code);
+	var func, parsed = parse(code), sections = {};
 	try {
-		func = new Function('bind', 'undefined', parsed);
+		func = new Function('bind', 'sections', 'undefined', parsed);
 	} catch (x) {
 		global.console.error(x.message + ': ' + parsed);
 		throw x.message + ': ' + parsed;
@@ -473,7 +467,7 @@ function compile(code, page) {
 		ctx.html.page = ctx;
 		ctx.html.model = model;
 	
-		var result = func.apply(ctx, [bind]);
+		var result = func.apply(ctx, [bind, sections]);
 
 		if(ctx.layout) {
 			var render_layout = function(layout_view){				
@@ -481,11 +475,11 @@ function compile(code, page) {
 						renderBody: function(){ return htmlString(result); },
 						viewBag: ctx.viewBag,
 						isSectionDefined: function(name) {
-							return typeof ctx.sections[name] === 'function';
+							return typeof sections[name] === 'function';
 						},
 						renderSection: function(name, required) {
 							if(this.isSectionDefined(name)) {
-								var temp = htmlString(ctx.sections[name]());
+								var temp = htmlString(sections[name]());
 								return temp;
 								
 							} else if(required) {

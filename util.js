@@ -9,11 +9,6 @@ function extend(a) {
 	return a;
 }
 
-function returnEmpty(func) {
-	var i = func.indexOf('{');
-	return func.substr(0, i + 1) + '\r\n' + func.substring(i + 1, func.lastIndexOf('}')) + '; return ""; }';
-}
-
 function doubleEncode(txt) {
 	return txt
 		.split('\\').join('\\\\')
