@@ -485,18 +485,17 @@ function compile(code, page) {
 							}
 						}
 					}, cb);	
-				if(!cb) result = layout_result;
+				if(!cb) return layout_result;
 			};
 			
 			var layout_view = Razor.view(ctx.layout, null, cb ? render_layout : undefined);
 			if(!cb) {
-				render_layout(layout_view);
+				return render_layout(layout_view);
 			}
-		}
 		
-		if(!cb) {
+		} else if(!cb) {
 			return result;
-		}
+		} else cb(result);
 	};
 }
 

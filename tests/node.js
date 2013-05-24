@@ -13,7 +13,8 @@ function parseHtml(html, cb){
 
 exports.node = function(test){
 	var equal = test.equal, ok = test.ok;
- 
+ 	test.expect(2);
+	
 	Razor.getViewFile = (function(getViewFile){
 		return function(){
 			var result = getViewFile.apply(this, arguments);
@@ -23,11 +24,16 @@ exports.node = function(test){
 	})(Razor.getViewFile);
 
 	
-	var html = Razor.view('index')({ name: 'RazorJS' });
-	parseHtml(html, function($){
-		equal($('meta').length, 1, '<meta>');
-		equal($('strong')[0].children[0].data, 'RazorJS', '<strong>');
-		test.done();
+	Razor.view('index', function(view){
+		view({ name: 'RazorJS' }, function(html){
+			
+			parseHtml(html, function($){
+				equal($('meta').length, 1, '<meta>');
+				equal($('strong')[0].children[0].data, 'RazorJS', '<strong>');
+				test.done();
+			});
+			
+		});
 	});
 	
 };
