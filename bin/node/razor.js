@@ -409,7 +409,7 @@ var basePage = {
 };
 
 function compile(code, page) {
-	var func, parsed = parse(code), sections = {};
+	var func, parsed = parse(code);
 	try {
 		func = new Function('bind', 'sections', 'undefined', parsed);
 	} catch (x) {
@@ -421,7 +421,8 @@ function compile(code, page) {
 			return execute(model, null, page1);
 		}
 		
-		var ctx = extend({ viewBag: {} }, basePage, page, page1, { model: model });
+		var ctx = extend({ viewBag: {} }, basePage, page, page1, { model: model }),
+			sections = {};
 		ctx.html = new HtmlHelper();
 		ctx.html.page = ctx;
 		ctx.html.model = model;
