@@ -69,17 +69,17 @@ function parse(template) {
 						}
 					}
 
-					var parsed = parse(block.substr(0, block.length - 1), level + 1, 1).join('\r\n\t') + '}',
+					var parsed = parse(block.substr(0, block.length - 1), level + 1, 1).join('\r\n\t'),
 						paren = parsed.indexOf('('),
 						bracket = parsed.indexOf('{');
 					if (paren === -1 || bracket< paren) paren = bracket;
-					if (peek === 'h') helpers.push('function ' + parsed.substr(7));
+					if (peek === 'h') helpers.push('function ' + parsed.substr(7) + '}');
 					else if (peek === 's') sections.push('sections.' + parsed.substr(8, paren - 8) + ' = function () {' + 
 							'var writer = [], writeLiteral = function(a) { writer.push(a); }, write = function(a){ writeLiteral(page.html.encode(a)); };\n' +
-							parsed.substr(bracket + 1).replace(/}$/g, '') +
+							parsed.substr(bracket + 1) +
 							'\nreturn writer.join("");\n}\n'
 						);
-					else cmds.push(parsed);
+					else cmds.push(parsed + '}');
 
 				} else if (peek && !rxValid.test(last(chunk.value))) {
 					var remain, match;
