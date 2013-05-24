@@ -1,3 +1,4 @@
+var Razor;
 var Cmd = function (code, type) {
 	this.code = code || '';
 	this.type = type || 0;
@@ -199,11 +200,7 @@ extend(HtmlHelper.prototype, {
 		return htmlString(Razor.view(view)(model, page || this.page));
 	}
 });
-
-var basePage = {
-	html: new HtmlHelper()
-};
-
+ 
 function compile(code, page) {
 	var func, parsed = parse(code);
 	try {
@@ -217,7 +214,7 @@ function compile(code, page) {
 			return execute(model, null, page1);
 		}
 		
-		var ctx = extend({ viewBag: {} }, basePage, page, page1, { model: model }),
+		var ctx = extend({ viewBag: {} }, Razor.basePage, page, page1, { model: model }),
 			sections = {};
 		ctx.html = new HtmlHelper();
 		ctx.html.page = ctx;
@@ -288,9 +285,10 @@ function view(id, page, cb) {
 	} else return template;
 }
 
-var Razor = {
+Razor = {
 	view: view, compile: compile, parse: parse, findView: null,
-	basePage: basePage, Cmd: Cmd, extend: extend, bind: bind,
+	basePage: {}, Cmd: Cmd, extend: extend, bind: bind,
+	HtmlHelper: HtmlHelper,
 	render: function (markup, model, page, cb) {
 		var result;
 		compile(markup)(model, page, function(html) {

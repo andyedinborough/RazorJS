@@ -1,7 +1,7 @@
 var Razor = require('../bin/node/razor.js');
 exports.encoding = function(test){	
 	var equal = test.equal;
-	var encode = Razor.basePage.html.encode;
+	var encode = new Razor.HtmlHelper().encode;
 	
 	equal(encode('<test>') + '', '&lt;test&gt;', 'encodes');
 	equal(encode(encode('<test>')) + '', '&lt;test&gt;', 'won\'t double-encode');
