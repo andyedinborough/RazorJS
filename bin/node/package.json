@@ -2,7 +2,7 @@
   "title": "RazorJS",
   "name": "razorjs",
   "description": "A JavaScript implementation of the Razor view engine for browsers and Node.",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "author": {
     "name": "Andy Edinborough (@andyedinborough)"
   },
@@ -19,6 +19,8 @@
     "grunt-contrib-qunit": "x.x.x",
     "grunt-contrib-copy": "x.x.x",
     "grunt-contrib-nodeunit": "x.x.x",
-    "nodeunit": "x.x.x"
+    "nodeunit": "x.x.x",
+    "htmlparser": "x.x.x",
+    "soupselect": "x.x.x"
   }
 }

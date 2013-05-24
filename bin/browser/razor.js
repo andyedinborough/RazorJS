@@ -1,5 +1,5 @@
 /*
-  RazorJS 0.2.2 <https://github.com/andyedinborough/RazorJS>
+  RazorJS 0.2.3 <https://github.com/andyedinborough/RazorJS>
   Copyright (c) 2013 Andy Edinborough (@andyedinborough)
   Released under MIT License
 */
