@@ -34,7 +34,7 @@ exports.parse = function(test){
 	} catch (x) { }
 	ok(true, 'Didn\'t crash');
 	
-	// equal(Razor.compile('@model.forEach(function(x){ @x })')([0]).trim(), '0', 'rendering from inside an inlined-function');
+	equal(Razor.compile('@model.forEach(function(x){ @x })')([0]).trim(), '0', 'rendering from inside an inlined-function');
 	
 	test.done();
 };

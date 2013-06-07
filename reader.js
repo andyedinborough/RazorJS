@@ -1,5 +1,3 @@
-
-
 var Reader = (function () {
 	var reader = function (text) {
 		this.text = (text || '') + '';

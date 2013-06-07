@@ -1,5 +1,5 @@
 function ifNative(func) {
-	if (func && (func+'').indexOf('[native code]') > -1)
+	if (func && ~func.toString().indexOf('[native code]'))
 		return func;
 }
 
@@ -31,7 +31,7 @@ var some = proxy(ifNative(Array.prototype.some) || function (fn, thisObj) {
 });
 
 //Dear IE8: I hate you.
-var specialKeys = 'toString valueOf'.split(' ');
+var specialKeys = ['toString', 'valueOf'];
 var objectKeys = ifNative(Object.keys) || function (a) {
 	var ret = [];
 	for (var i in a)

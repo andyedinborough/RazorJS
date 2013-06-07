@@ -26,7 +26,7 @@ var _function_template =
 function parse(template) {
 	var rdr = new Reader(template),
 		level = arguments[1] || 0, mode = arguments[2] || 0,
-		cmds = [], helpers = [], sections = [], chunk, peek, block,
+		cmds = [], helpers = [], sections = [], chunk, peek, block, bracket,
 		parseCodeBlock = function(){				
 			peek = rdr.peek();
 			if (peek === '*') rdr.readUntil('*@');
@@ -71,8 +71,8 @@ function parse(template) {
 					}
 
 					var parsed = parse(block.substr(0, block.length - 1), level + 1, 1).join('\r\n\t'),
-						paren = parsed.indexOf('('),
-						bracket = parsed.indexOf('{');
+						paren = parsed.indexOf('(');
+					bracket = parsed.indexOf('{');
 					if (paren === -1 || bracket < paren) paren = bracket;
 					if (peek === 'h') helpers.push('function ' + parsed.substring(7, bracket) + '{' +
 						_function_template_basic + parsed.substr(bracket + 1) + 
@@ -93,12 +93,19 @@ function parse(template) {
 						peek = rdr.peek();
 						if(!peek) break;
 						if (peek === '[' || peek === '(') {
-							block += rdr.readBlock(peek, peek === '[' ? ']' : ')');
-							
+							remain = rdr.readBlock(peek, peek === '[' ? ']' : ')');
+							if(peek === '(' && (/\s*function[\s*\(]/).test(remain)) {
+								bracket = remain.indexOf('{');
+								block += remain.substr(0, bracket);
+								block += parse(remain.substr(bracket), level + 1, 1).join('\r\n\t');
+							} else {
+								block += remain;
+							}
 							break;
 						}
 					}
 					if (block) cmds.push(block, 1);
+					
 				} else if (mode === 0) {
 					if(chunk.next) cmds.push('@', 2);
 				}
