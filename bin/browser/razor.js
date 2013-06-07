@@ -1,5 +1,5 @@
 /*
-  RazorJS 0.3.0
+  RazorJS 0.3.1
   Copyright (c) 2013 Andy Edinborough (@andyedinborough)
   Released under MIT License
 */
