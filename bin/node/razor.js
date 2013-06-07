@@ -557,8 +557,8 @@ extend(Razor, {
 
     code = '(function(){ ' + code + ';\nreturn ' + wrapper + '; })()';
     code = code
-      .replace(/(\W)extend(\W)/g, '$1Razor.extend$2')
-      .replace(/(\W)basePage(\W)/g, '$1Razor.basePage$2');
+      .replace(/(\W)extend(\W)/g, '$1Razor.utils.extend$2')
+      .replace(/(\W)basePage(\W)/g, '$1Razor.utils.basePage$2');
 
     return code;
   }
