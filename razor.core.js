@@ -94,6 +94,7 @@ function parse(template) {
 						if(!peek) break;
 						if (peek === '[' || peek === '(') {
 							block += rdr.readBlock(peek, peek === '[' ? ']' : ')');
+							
 							break;
 						}
 					}
@@ -192,12 +193,8 @@ function encode(value){
 var HtmlHelper = function(){ };
 extend(HtmlHelper.prototype, {
 	encode: encode,
-	attributeEncode: function (value) {
-		return encode(value);
-	},
-	raw: function (value) {
-		return htmlString(value);
-	},
+	attributeEncode: encode,
+	raw: htmlString,
 	renderPartial: function (view, model, page) {
 		return htmlString(Razor.view(view)(model, page || this.page));
 	}
@@ -216,8 +213,9 @@ function compile(code, page) {
 	try {
 		func = new Function('bind', 'sections', 'undefined', parsed);
 	} catch (x) {
-		global.console.error(x.message + ': ' + parsed);
-		throw x.message + ': ' + parsed;
+		if(Razor.options.onerror(x, parsed) !== false) {
+			throw x.message + ': ' + parsed;
+		}
 	}
 	return function execute(model, page1, cb) {
 		if(!cb && typeof page1 === 'function') {
@@ -295,7 +293,7 @@ function view(id, page, cb) {
 }
 
 Razor = {
-	options: { strict: true },
+	options: { strict: true, onerror: function(){ } },
 	view: view, compile: compile, parse: parse, findView: null,
 	BasePage: function(){ }, Cmd: Cmd, extend: extend, bind: bind,
 	HtmlHelper: HtmlHelper,
