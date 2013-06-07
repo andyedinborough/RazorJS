@@ -70,6 +70,8 @@ module.exports = function(grunt) {
     jshint: {
       options: {
         curly: false,
+				undef: true,
+				unused: true,
         boss: true,
         evil: true,
         browser: true,
@@ -85,7 +87,7 @@ module.exports = function(grunt) {
       browser: {
         src: ['<%= concat.browser.dest %>'],
         dest: 'bin/browser/razor.min.js'
-      }									 
+      }
 		},
 		
 		nodeunit: {

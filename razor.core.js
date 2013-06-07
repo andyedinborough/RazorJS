@@ -27,7 +27,7 @@ function parse(template) {
 	var rdr = new Reader(template),
 		level = arguments[1] || 0, mode = arguments[2] || 0,
 		cmds = [], helpers = [], sections = [], chunk, peek, block, bracket,
-		parseCodeBlock = function(){				
+		parseCodeBlock = function() {
 			peek = rdr.peek();
 			if (peek === '*') rdr.readUntil('*@');
 				else if (peek === '(') {
@@ -178,42 +178,20 @@ function parse(template) {
 	}
 
 	if (level > 0) return cmds;
-	return { 
-		code: cmds.join('\r\n'), 
-		sections: sections, 
+	return {
+		code: cmds.join('\r\n'),
+		sections: sections,
 		helpers: helpers
 	};
 }
-
-function encode(value){
-	if (value === null || value === undefined) value = '';
-	if (value.isHtmlString) return value;
-	if (typeof value !== 'string') value += '';
-	value = value
-		.split('&').join('&amp;')
-		.split('<').join('&lt;')
-		.split('>').join('&gt;')
-		.split('"').join('&quot;');
-	return htmlString(value);
-}
-
-var HtmlHelper = function(){ };
-extend(HtmlHelper.prototype, {
-	encode: encode,
-	attributeEncode: encode,
-	raw: htmlString,
-	renderPartial: function (view, model, page) {
-		return htmlString(Razor.view(view)(model, page || this.page));
-	}
-});
  
 function compile(code, page) {
 	var func, parsed = parse(code);
 	
 	parsed = (Razor.options.strict ? '"use strict";\r\n' : '') +
-		_function_template.replace('@code', 
-			parsed.helpers.join('\r\n') + '\r\n' + 
-			parsed.sections.join('\r\n') + 
+		_function_template.replace('@code',
+			parsed.helpers.join('\r\n') + '\r\n' +
+			parsed.sections.join('\r\n') +
 			parsed.code
 		);
 	
@@ -224,21 +202,21 @@ function compile(code, page) {
 			throw x.message + ': ' + parsed;
 		}
 	}
+	
 	return function execute(model, page1, cb) {
 		if(!cb && typeof page1 === 'function') {
 			return execute(model, null, page1);
 		}
 		
-		var ctx = extend({ viewBag: {} }, new Razor.BasePage(), page, page1, { model: model }),
-			sections = {};
-		ctx.html = new HtmlHelper();
+		var ctx = extend(new Razor.BasePage(), page, page1), sections = {};
+		ctx.model = model;
 		ctx.html.page = ctx;
 		ctx.html.model = model;
 	
 		var result = func.apply(ctx, [bind, sections]);
 
 		if(ctx.layout) {
-			var render_layout = function(layout_view){				
+			var render_layout = function(layout_view) {
 				var layout_result = layout_view(null, {
 						renderBody: function(){ return htmlString(result); },
 						viewBag: ctx.viewBag,
@@ -254,7 +232,7 @@ function compile(code, page) {
 								throw 'Section "' + name + '" not found.';
 							}
 						}
-					}, cb);	
+					}, cb);
 				if(!cb) return layout_result;
 			};
 			
@@ -276,7 +254,7 @@ function view(id, page, cb) {
 	}
 
 	var key = '~/' + id,
-		template = views[key], 
+		template = views[key],
 		etag0 = etags[key],
 		etag = Razor.getViewEtag(id);
 	
@@ -285,7 +263,7 @@ function view(id, page, cb) {
 				if (script) {
 					template = views[key] = Razor.compile(script, page);
 					etags[key] = etag;
-				} 
+				}
 				if (cb) cb(template);
 			};
 		
@@ -301,20 +279,24 @@ function view(id, page, cb) {
 
 Razor = {
 	utils: {
-		extend: extend, bind: bind, Cmd: Cmd
+		extend: extend, bind: bind, Cmd: Cmd,
+		htmlString: htmlString, encode: encode,
 	},
-	options: { 
-		strict: true, onerror: function(){ }, cacheDisabled: false 
+	options: {
+		strict: true, onerror: function(){ }, cacheDisabled: false
 	},
 	view: view, compile: compile, parse: parse, findView: null,
-	BasePage: function(){ },
+	BasePage: function(){
+		this.viewBag = {};
+		this.html = new HtmlHelper();
+	},
 	HtmlHelper: HtmlHelper,
 	render: function (markup, model, page, cb) {
 		var result;
 		compile(markup)(model, page, function(html) {
 			result = html;
-			if(cb) cb(result);			
-		}); 
+			if(cb) cb(result);
+		});
 		return result;
 	},
 	getViewEtag: null,
