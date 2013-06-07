@@ -417,8 +417,7 @@ function compile(code, page) {
 	try {
 		func = new Function('bind', 'sections', 'undefined', parsed);
 	} catch (x) {
-		if(Razor.options.onerror(x) !== false) {
-			global.console.error(x.message + ': ' + parsed);
+		if(Razor.options.onerror(x, parsed) !== false) {
 			throw x.message + ': ' + parsed;
 		}
 	}
@@ -478,7 +477,7 @@ function view(id, page, cb) {
 		etag0 = etags[key],
 		etag = Razor.getViewEtag(id);
 	
-	if (!template || etag !== etag0 || Razor.cacheDisabled) {
+	if (!template || etag !== etag0 || Razor.options.cacheDisabled) {
 		var done = function(script){
 				if (script) {
 					template = views[key] = Razor.compile(script, page);
@@ -498,9 +497,14 @@ function view(id, page, cb) {
 }
 
 Razor = {
-	options: { strict: true, onerror: function(){ } },
+	utils: {
+		extend: extend, bind: bind, Cmd: Cmd
+	},
+	options: { 
+		strict: true, onerror: function(){ }, cacheDisabled: false 
+	},
 	view: view, compile: compile, parse: parse, findView: null,
-	BasePage: function(){ }, Cmd: Cmd, extend: extend, bind: bind,
+	BasePage: function(){ },
 	HtmlHelper: HtmlHelper,
 	render: function (markup, model, page, cb) {
 		var result;
@@ -511,7 +515,7 @@ Razor = {
 		return result;
 	},
 	getViewEtag: null,
-	views: views, etags: etags, cacheDisabled: false
+	views: views, etags: etags
 };
 var wrapper;
 
