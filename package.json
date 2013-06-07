@@ -1,12 +1,12 @@
 {
   "title": "RazorJS",
-  "name": "razorjs",
+  "name": "razor",
   "description": "A JavaScript implementation of the Razor view engine for browsers and Node.",
   "version": "0.3.0",
   "author": {
     "name": "Andy Edinborough (@andyedinborough)"
   },
-  "homepage": "https://github.com/andyedinborough/RazorJS",
+  "repository": "https://github.com/andyedinborough/RazorJS",	
   "licenses": [
     {
       "type": "MIT"
@@ -22,5 +22,10 @@
     "nodeunit": "x.x.x",
     "htmlparser": "x.x.x",
     "soupselect": "x.x.x"
-  }
+  },
+	"main": "./bin/node/razor.js",
+	"scripts": {
+		"test": "grunt test",
+		"preinstall": "npm i -g grunt-cli"
+	}
 }
