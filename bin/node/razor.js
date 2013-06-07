@@ -218,7 +218,7 @@ extend(Cmd.prototype, {
 });
 
 var _function_template_basic = 'var writer = [], writeLiteral = function(a) { writer.push(a); }, write = function(a){ writeLiteral(html.encode(a)); };\n';
-var _function_template = '"use strict";\n' +
+var _function_template = 
 	_function_template_basic + 
 	'var page = this, model = page.model, viewBag = this.viewBag, html = this.html,\n' + 
 	'	isSectionDefined = this.isSectionDefined ? bind(this.isSectionDefined, this) : undefined,\n' +
@@ -374,10 +374,11 @@ function parse(template) {
 	}
 
 	if (level > 0) return cmds;
-	template = cmds.join('\r\n');
-	template = _function_template
-			.replace('@code', helpers.join('\r\n') + '\r\n' + sections.join('\r\n') + template);
-	return template;
+	return { 
+		code: cmds.join('\r\n'), 
+		sections: sections, 
+		helpers: helpers
+	};
 }
 
 function encode(value){
@@ -408,6 +409,14 @@ extend(HtmlHelper.prototype, {
  
 function compile(code, page) {
 	var func, parsed = parse(code);
+	
+	parsed = (Razor.options.strict ? '"use strict";\r\n' : '') +
+		_function_template.replace('@code', 
+			parsed.helpers.join('\r\n') + '\r\n' + 
+			parsed.sections.join('\r\n') + 
+			parsed.code
+		);
+	
 	try {
 		func = new Function('bind', 'sections', 'undefined', parsed);
 	} catch (x) {
@@ -419,7 +428,7 @@ function compile(code, page) {
 			return execute(model, null, page1);
 		}
 		
-		var ctx = extend({ viewBag: {} }, Razor.basePage, page, page1, { model: model }),
+		var ctx = extend({ viewBag: {} }, new Razor.BasePage(), page, page1, { model: model }),
 			sections = {};
 		ctx.html = new HtmlHelper();
 		ctx.html.page = ctx;
@@ -490,8 +499,9 @@ function view(id, page, cb) {
 }
 
 Razor = {
+	options: { strict: true },
 	view: view, compile: compile, parse: parse, findView: null,
-	basePage: {}, Cmd: Cmd, extend: extend, bind: bind,
+	BasePage: function(){ }, Cmd: Cmd, extend: extend, bind: bind,
 	HtmlHelper: HtmlHelper,
 	render: function (markup, model, page, cb) {
 		var result;

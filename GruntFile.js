@@ -75,7 +75,6 @@ module.exports = function(grunt) {
         browser: true,
         node: true
       },
-      globals: { },
       files: ['<%= concat.browser.dest %>', '<%= concat.node.dest %>']
     },
 

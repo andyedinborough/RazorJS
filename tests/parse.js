@@ -15,6 +15,7 @@ exports.parse = function(test){
 	equal(Razor.compile('test@@@(model.test).com')({ test: 'test' }), 'test@test.com', 'explicit code');
 	equal(Razor.compile('hello @model.name')({ name: 'world' }), 'hello world', 'model');
 	equal(Razor.compile('hello @model.name[0]')({ name: 'world'.split('') }), 'hello w', 'model w/ indexers');
+	equal(Razor.compile('hello @model[\'name\']')({ name: 'world' }), 'hello world', 'model w/ string indexers');
 	equal(Razor.compile('hello @model.name("world")')({ name: function (n) { return n; } }), 'hello world', 'model w/ method');
 	equal(Razor.compile('te@*FAIL*@st')(), 'test', 'comment');
 	equal(Razor.compile('@if(model.name){ @model.name }')({ name: 'test' }), 'test', 'if statement');
