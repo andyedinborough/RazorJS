@@ -287,8 +287,12 @@ Razor = {
 	},
 	view: view, compile: compile, parse: parse, findView: null,
 	BasePage: function(){
-		this.viewBag = {};
-		this.html = new HtmlHelper();
+		if(!this.viewBag) {
+			this.viewBag = {};
+		}
+		if(!this.html) {
+			this.html = new HtmlHelper();
+		}
 	},
 	HtmlHelper: HtmlHelper,
 	render: function (markup, model, page, cb) {
