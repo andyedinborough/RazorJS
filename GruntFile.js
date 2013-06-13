@@ -91,11 +91,9 @@ module.exports = function(grunt) {
 		},
 		
 		nodeunit: {
-			all: [
-				'tests/parse.js',
-				'tests/encoding.js',
-				'tests/node.js'
-			]
+			parse: ['tests/parse.js'],
+			encoding: ['tests/encoding.js'],
+			node: ['tests/node.js']
 		}
   });
 
