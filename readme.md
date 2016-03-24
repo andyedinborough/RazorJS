@@ -88,7 +88,7 @@ Syntax
 
           <td valign="top">
               <pre>
-@@{ 
+@{ 
 	model.items.forEach(function(item) {
 		&lt;span&gt;@item.Prop&lt;/span&gt; 
 	}); 
