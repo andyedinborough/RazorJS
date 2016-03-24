@@ -52,8 +52,8 @@ Syntax
           <td valign="top">
               <pre>
 @{ 
-	int x = 123; 
-	string y = "because.";
+	var x = 123; 
+	var y = "because.";
 }
 </pre>
           </td>
