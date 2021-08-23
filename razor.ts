@@ -45,7 +45,7 @@ function write(a){ writeLiteral(${html}.encode(a)); };
 `;
 }
 
-function functionTemplate(code: string, dialect: RazorDialect) {
+function functionTemplate(code: string, dialect: RazorDialect, locals: string[]) {
   const { model, viewBag, html, isSectionDefined, renderSection, renderBody, layout } = dialect;
   return `"use strict";
 ${functionTemplateBasic(dialect)}
@@ -54,6 +54,7 @@ const page = this, {
   isSectionDefined: ${isSectionDefined}, renderSection: ${renderSection}, 
   renderBody: ${renderBody}, layout: _rzr_layout 
 } = page;
+${locals?.length ? `const { ${locals.join(', ')} } = page;` : ''}
 let ${layout} = _rzr_layout;
 ${code}
 if(_rzr_layout !== ${dialect.layout}) { this.layout = ${dialect.layout}; }
@@ -247,16 +248,19 @@ type RazorDialect = typeof DEFAULT_DIALECT;
 interface RazorOptions {
   findView?: (id: string) => Promise<string | undefined>;
   dialect?: Partial<RazorDialect>;
+  locals?: string[];
 }
 
 export class Razor {
   #templates = new Map<string, View>();
   #findView: ((id: string) => Promise<string | undefined>) | undefined;
   #dialect: RazorDialect;
+  #locals: string[];
 
   constructor(options?: RazorOptions) {
     this.#findView = options?.findView;
     this.#dialect = { ...DEFAULT_DIALECT, ...options?.dialect };
+    this.#locals = options?.locals ?? [];
   }
 
   parse(template: string) {
@@ -271,7 +275,7 @@ export class Razor {
 
   compile(code: string, page?: object): View {
     const parsed = this.parse(code);
-    const functionCode = functionTemplate(parsed.helpers.join(NEWLINE) + NEWLINE + parsed.sections.join(NEWLINE) + parsed.code, this.#dialect);
+    const functionCode = functionTemplate(parsed.helpers.join(NEWLINE) + NEWLINE + parsed.sections.join(NEWLINE) + parsed.code, this.#dialect, this.#locals);
 
     let func: Function;
     try {

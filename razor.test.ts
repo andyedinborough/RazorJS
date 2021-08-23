@@ -111,6 +111,11 @@ it('supports async w/o parens', async () => {
   expect(result.trim()).toBe('hi');
 });
 
+it('supports custom locals', async () => {
+  const result = await new Razor({ locals: ['hi'] }).render(`@hi`, {}, { hi: 'hi' });
+  expect(result.trim()).toBe('hi');
+});
+
 it('can change dialect', async () => {
   const razor = new Razor({
     dialect: { layout: 'Layout', renderBody: 'RenderBody' },
