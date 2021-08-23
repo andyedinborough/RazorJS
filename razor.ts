@@ -4,7 +4,7 @@ import { HtmlString } from './HtmlString';
 
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 
-const rxValid = /^[a-z0-9\._]+/i,
+const rxValid = /^(?:await\s+)?(?:new\s+)?[a-z0-9\._]+/i,
   rxTagName = /^[a-z]+(?:\:[a-z]+)?/i,
   rxFunction = /\s*function[\s*\(]/;
 
