@@ -3,7 +3,7 @@ enum Position {
   End = 2,
 }
 
-class Chunk {
+export class Chunk {
   value: string;
   next: string;
   public length: number;
@@ -117,7 +117,7 @@ export function readQuoted(rdr: Reader, ...quote: string[]) {
   return result;
 }
 
-export function readQuotedUntil(rdr: Reader, ...chars: string[]) {
+export function readQuotedUntil(rdr: Reader, ...chars: string[]): Chunk | undefined {
   let result = '',
     block: Chunk | undefined;
   chars = ['"', "'", '@*'].concat(chars);

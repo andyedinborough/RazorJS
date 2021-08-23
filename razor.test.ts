@@ -51,14 +51,63 @@ it('can render helpers', async () =>
     ).trim()
   ).toBe('hi bill'));
 
-it('crender layouts', async () => {
-  const razor = new Razor(async (id) => {
-    switch (id) {
-      case 'layout':
-        return 'begin @renderBody() end';
-    }
+it('renders layouts', async () => {
+  const razor = new Razor({
+    async findView(id) {
+      switch (id) {
+        case 'layout':
+          return 'begin @renderBody() end';
+      }
+    },
   });
 
   const result = await razor.render('@{ layout = "layout"; } test');
+  expect(result.replace(/\s+/g, ' ')).toBe('begin test end');
+});
+
+it('renders layouts with sections', async () => {
+  const razor = new Razor({
+    async findView(id) {
+      switch (id) {
+        case 'layout':
+          return 'begin @renderBody() end @renderSection("afterEnd", false)';
+      }
+    },
+  });
+
+  const result = await razor.render('@{ layout = "layout"; } test @section afterEnd(){ @: after }');
+  expect(result.replace(/\s+/g, ' ').trim()).toBe('begin test end after');
+});
+
+it('does not try to process emails', async () => expect(await new Razor().render('my email is test@test.com')).toBe('my email is test@test.com'));
+
+it('encodes values', async () => {
+  const result = await new Razor().render(`
+    @{ var test = '<script>alert("fail")</script'; }
+    @test
+  `);
+  expect(result).not.toContain('<script>');
+});
+
+it('does not encode raw values', async () => {
+  const result = await new Razor().render(`
+    @{ var test = '<script>alert("fail")</script'; }
+    @html.raw(test)
+  `);
+  expect(result).toContain('<script>');
+});
+
+it('can change dialect', async () => {
+  const razor = new Razor({
+    dialect: { layout: 'Layout', renderBody: 'RenderBody' },
+    async findView(id) {
+      switch (id) {
+        case 'asdf':
+          return 'begin @RenderBody() end';
+      }
+    },
+  });
+
+  const result = await razor.render('@{ Layout = "asdf"; } test');
   expect(result.replace(/\s+/g, ' ')).toBe('begin test end');
 });
