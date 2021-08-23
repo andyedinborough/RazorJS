@@ -6,25 +6,23 @@
   "author": {
     "name": "Andy Edinborough (@andyedinborough)"
   },
-  "repository": "https://github.com/andyedinborough/RazorJS",	
+  "repository": "https://github.com/andyedinborough/RazorJS",
   "licenses": [
     {
       "type": "MIT"
     }
   ],
   "devDependencies": {
-    "grunt-contrib-uglify": "x.x.x",
-    "grunt-contrib-concat": "x.x.x",
-    "grunt-contrib-jshint": "x.x.x",
-    "grunt-contrib-qunit": "x.x.x",
-    "grunt-contrib-copy": "x.x.x",
-    "grunt-contrib-nodeunit": "x.x.x",
-    "nodeunit": "x.x.x",
-    "htmlparser": "x.x.x",
-    "soupselect": "x.x.x"
+    "@babel/core": "^7.15.0",
+    "@babel/preset-env": "^7.15.0",
+    "@babel/preset-typescript": "^7.15.0",
+    "@types/jest": "^27.0.1",
+    "babel-jest": "^27.0.6",
+    "jest": "^27.0.6",
+    "typescript": "4.3.5"
   },
-	"main": "./bin/node/razor.js",
-	"scripts": {
-		"test": "grunt test"
-	}
+  "main": "./bin/node/razor.js",
+  "scripts": {
+    "test": "jest"
+  }
 }
