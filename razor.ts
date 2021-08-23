@@ -2,6 +2,8 @@ import { Chunk, last, readBlock, Reader, readQuotedUntil, readUntil, readWhitesp
 import { doubleEncode, HtmlHelper } from './HtmlHelper';
 import { HtmlString } from './HtmlString';
 
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+
 const rxValid = /^[a-z0-9\._]+/i,
   rxTagName = /^[a-z]+(?:\:[a-z]+)?/i,
   rxFunction = /\s*function[\s*\(]/;
@@ -191,13 +193,13 @@ function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContex
           }
           block = chunk + '';
           if (last(chunk.value) !== '/') {
-            let nested_count = 1,
+            let nestedCount = 1,
               nested: Chunk;
-            while (nested_count > 0) {
+            while (nestedCount > 0) {
               nested = readQuotedUntil(rdr, '</' + tagname, '<' + tagname);
               block += nested;
               if (rdr.eof()) break;
-              nested_count += nested.next.substr(1, 1) === '/' ? -1 : 1;
+              nestedCount += nested.next.substr(1, 1) === '/' ? -1 : 1;
             }
             block += readQuotedUntil(rdr, '>');
           }
@@ -239,6 +241,7 @@ const DEFAULT_DIALECT = {
   renderSection: 'renderSection',
   renderBody: 'renderBody',
 };
+
 type RazorDialect = typeof DEFAULT_DIALECT;
 
 interface RazorOptions {
@@ -272,7 +275,7 @@ export class Razor {
 
     let func: Function;
     try {
-      func = new Function('sections', functionCode);
+      func = new AsyncFunction('sections', functionCode);
     } catch (x) {
       throw new Error(`Unable to compile: ${x}${NEWLINE}${NEWLINE}${functionCode}`);
     }
@@ -281,7 +284,7 @@ export class Razor {
       const ctx = { layout: '', viewBag: {}, html: new HtmlHelper(), ...page, ...page1, model },
         sections: Record<string, View> = {};
 
-      let result: string = func.apply(ctx, [sections]);
+      let result: string = await func.apply(ctx, [sections]);
 
       if (ctx.layout) {
         const layoutView = await this.view(ctx.layout, page);

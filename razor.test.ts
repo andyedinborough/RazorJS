@@ -97,6 +97,20 @@ it('does not encode raw values', async () => {
   expect(result).toContain('<script>');
 });
 
+it('supports async', async () => {
+  const result = await new Razor().render(`
+    @(await new Promise(resolve => setTimeout(() => resolve('hi'), 10)))
+  `);
+  expect(result.trim()).toBe('hi');
+});
+
+it('supports async w/o parens', async () => {
+  const result = await new Razor().render(`
+    @await new Promise(resolve => setTimeout(() => resolve('hi'), 10))
+  `);
+  expect(result.trim()).toBe('hi');
+});
+
 it('can change dialect', async () => {
   const razor = new Razor({
     dialect: { layout: 'Layout', renderBody: 'RenderBody' },
