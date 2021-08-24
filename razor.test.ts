@@ -180,9 +180,8 @@ it('outputs html from codeblock, but continues code', async () =>
     (
       await new Razor().render(`
 @{ 
-  <h1>hi</h1>
-  var test = 'hi'; 
-}<h2>@hi</h2>
+  <h1>hi</h1>\rvar test = 'hi'; 
+}<h2>@test</h2>
 `)
     ).trim()
-  ).toBe('<h1>hi</h1>'));
+  ).toBe('<h1>hi</h1><h2>hi</h2>'));

@@ -90,9 +90,9 @@ function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContex
       block = readBlock(rdr, '{', '}');
       cmds.push(new Cmd(parseImpl(block.substr(1, block.length - 2), level + 1, Mode.Code, ctx).join(NEWLINE)));
     } else if (peek === ':' && mode === Mode.Code) {
-      block = readUntil(rdr, '\n', '@', '}');
+      block = readUntil(rdr, '\r', '\n', '@', '}');
       while (block?.next === '@' && rdr.peek() === '@') {
-        const temp = readUntil(rdr, '\n', '@', '}');
+        const temp = readUntil(rdr, '\r', '\n', '@', '}');
         if (temp) {
           block.value += temp.value;
           block.next = temp.next;
