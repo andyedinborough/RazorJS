@@ -3,6 +3,7 @@ import { doubleEncode, HtmlHelper } from './HtmlHelper';
 import { HtmlString } from './HtmlString';
 
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+const html = new HtmlHelper();
 
 const rxValid = /^(?:await\s+)?(?:new\s+)?[a-z0-9\._]+/i,
   rxTagName = /^[a-z]+(?:\:[a-z]+)?/i,
@@ -48,13 +49,13 @@ function write(a){ writeLiteral(${html}.encode(a)); };
 function functionTemplate(code: string, dialect: RazorDialect, locals: string[]) {
   const { model, viewBag, html, isSectionDefined, renderSection, renderBody, layout } = dialect;
   return `"use strict";
-${functionTemplateBasic(dialect)}
-const page = this, { 
+const { 
   model: ${model}, viewBag: ${viewBag}, html: ${html}, 
   isSectionDefined: ${isSectionDefined}, renderSection: ${renderSection}, 
   renderBody: ${renderBody}, layout: _rzr_layout 
 } = page;
-${locals?.length ? `const { ${locals.join(', ')} } = page;` : ''}
+const ${locals?.length ? `{ ${locals.join(', ')} } = page;` : ''}
+${functionTemplateBasic(dialect)}
 let ${layout} = _rzr_layout;
 ${code}
 if(_rzr_layout !== ${dialect.layout}) { this.layout = ${dialect.layout}; }
@@ -70,6 +71,7 @@ interface ParseContext {
   helpers: string[];
   sections: string[];
   dialect: RazorDialect;
+  options: RazorOptions | undefined;
 }
 
 function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContext): Cmd[] {
@@ -105,6 +107,7 @@ function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContex
       (peek === 's' && rdr.peek(6) === 'switch') ||
       (peek === 's' && rdr.peek(7) === ctx.dialect.section)
     ) {
+      //TODO: trim whitespace before the {
       block = readBlock(rdr, '{', '}');
 
       if (peek === 'i') {
@@ -126,13 +129,13 @@ function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContex
       if (paren === -1 || bracket < paren) paren = bracket;
       if (peek === 'h')
         ctx.helpers.push(
-          `function ${parsed.substring(7, bracket)} {${functionTemplateBasic(ctx.dialect)}${parsed.substr(bracket + 1)}${NEWLINE}return ${
+          `function ${parsed.substring(7, bracket).trim()} {${functionTemplateBasic(ctx.dialect)}${parsed.substr(bracket + 1)}${NEWLINE}return ${
             ctx.dialect.html
           }.raw(writer.join(""));${NEWLINE}}${NEWLINE}`
         );
       else if (peek === 's' && block.substr(0, 6) != 'switch')
         ctx.sections.push(
-          `sections.${parsed.substr(8, paren - 8)} = function () {${functionTemplateBasic(ctx.dialect)}${parsed.substr(
+          `sections.${parsed.substr(8, paren - 8).trim()} = function () {${functionTemplateBasic(ctx.dialect)}${parsed.substr(
             bracket + 1
           )}${NEWLINE}return writer.join("");${NEWLINE}}${NEWLINE}`
         );
@@ -226,6 +229,10 @@ function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContex
     parseCodeBlock();
   }
 
+  if (ctx.options.processCommand) {
+    const proc = ctx.options.processCommand;
+    return cmds.map((x) => (x.type === CmdType.Code ? new Cmd(proc(x.code), CmdType.Code) : x));
+  }
   return cmds;
 }
 
@@ -249,6 +256,8 @@ interface RazorOptions {
   findView?: (id: string) => Promise<string | undefined>;
   dialect?: Partial<RazorDialect>;
   locals?: string[];
+  processCommand?: (cmd: string) => string;
+  viewCompiled?: (code: string) => string;
 }
 
 export class Razor {
@@ -256,15 +265,16 @@ export class Razor {
   #findView: ((id: string) => Promise<string | undefined>) | undefined;
   #dialect: RazorDialect;
   #locals: string[];
+  #options: RazorOptions | undefined;
 
   constructor(options?: RazorOptions) {
-    this.#findView = options?.findView;
+    this.#options = options;
     this.#dialect = { ...DEFAULT_DIALECT, ...options?.dialect };
     this.#locals = options?.locals ?? [];
   }
 
   parse(template: string) {
-    const ctx: ParseContext = { helpers: [], sections: [], dialect: this.#dialect };
+    const ctx: ParseContext = { helpers: [], sections: [], dialect: this.#dialect, options: this.#options };
     const cmds = parseImpl(template, 0, Mode.Text, ctx);
     return {
       code: cmds.join(NEWLINE),
@@ -275,20 +285,21 @@ export class Razor {
 
   compile(code: string, page?: object): View {
     const parsed = this.parse(code);
-    const functionCode = functionTemplate(parsed.helpers.join(NEWLINE) + NEWLINE + parsed.sections.join(NEWLINE) + parsed.code, this.#dialect, this.#locals);
+    let functionCode = functionTemplate(parsed.helpers.join(NEWLINE) + NEWLINE + parsed.sections.join(NEWLINE) + parsed.code, this.#dialect, this.#locals);
+    functionCode = this.#options.viewCompiled?.(functionCode) ?? functionCode;
 
     let func: Function;
     try {
-      func = new AsyncFunction('sections', functionCode);
+      func = new AsyncFunction('page', 'sections', functionCode);
     } catch (x) {
       throw new Error(`Unable to compile: ${x}${NEWLINE}${NEWLINE}${functionCode}`);
     }
 
     return async (model: unknown, page1?: object) => {
-      const ctx = { layout: '', viewBag: {}, html: new HtmlHelper(), ...page, ...page1, model },
+      const ctx = { layout: '', viewBag: {}, [this.#dialect.html]: html, ...page, ...page1, model },
         sections: Record<string, View> = {};
 
-      let result: string = await func.apply(ctx, [sections]);
+      let result: string = await func.apply(undefined, [ctx, sections]);
 
       if (ctx.layout) {
         const layoutView = await this.view(ctx.layout, page);
