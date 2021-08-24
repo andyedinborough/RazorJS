@@ -1,5 +1,5 @@
 {
   "include": ["**/*.ts"],
-  "exclude": ["node_modules"],
-  "compilerOptions": { "target": "es2015", "moduleResolution": "Node", "skipLibCheck": true }
+  "exclude": ["node_modules", "**/*.test.ts"],
+  "compilerOptions": { "target": "es2015", "moduleResolution": "Node", "skipLibCheck": true, "noImplicitAny": true, "outDir": "./dist", "strictNullChecks": true }
 }

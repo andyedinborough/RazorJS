@@ -22,7 +22,7 @@ export class Chunk {
 }
 
 function read(rdr: Reader, chars: string[], until: boolean) {
-  const cache = [];
+  const cache: string[] = [];
   let result = '',
     next = '';
   let l: number | undefined;

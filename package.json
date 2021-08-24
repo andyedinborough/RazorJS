@@ -23,6 +23,7 @@
   },
   "main": "./bin/node/razor.js",
   "scripts": {
+    "build": "./node_modules/.bin/tsc",
     "test": "jest"
   }
 }

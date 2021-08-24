@@ -148,7 +148,7 @@ it('passes legacy tests', async () => {
   equal(await razor.render("hello @model['name']", { name: 'world' }), 'hello world', 'model w/ string indexers');
   equal(
     await razor.render('hello @model.name("world")', {
-      name: function (n) {
+      name: function (n: unknown) {
         return n;
       },
     }),

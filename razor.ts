@@ -45,7 +45,7 @@ function write(a){ writeLiteral(${html}.encode(a)); };
 `;
 }
 
-function functionTemplate(id: string, code: string, dialect: RazorDialect, locals: string[]) {
+function functionTemplate(id: string | undefined, code: string, dialect: RazorDialect, locals: string[]) {
   const { model, viewBag, html, isSectionDefined, renderSection, renderBody, layout } = dialect;
   return `return async function ${id?.replace(/\W+/g, '_') ?? 'template'}(page, sections) {
 "use strict";
@@ -72,7 +72,7 @@ interface ParseContext {
   helpers: string[];
   sections: string[];
   dialect: RazorDialect;
-  options: RazorOptions | undefined;
+  options: RazorOptions;
 }
 
 function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContext): Cmd[] {
@@ -91,14 +91,18 @@ function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContex
       cmds.push(new Cmd(parseImpl(block.substr(1, block.length - 2), level + 1, Mode.Code, ctx).join(NEWLINE)));
     } else if (peek === ':' && mode === Mode.Code) {
       block = readUntil(rdr, '\n', '@', '}');
-      while (block.next === '@' && rdr.peek() === '@') {
+      while (block?.next === '@' && rdr.peek() === '@') {
         const temp = readUntil(rdr, '\n', '@', '}');
-        block.value += temp.value;
-        block.next = temp.next;
+        if (temp) {
+          block.value += temp.value;
+          block.next = temp.next;
+        }
       }
       rdr.seek(-1);
-      block.value = block.value.substr(1);
-      cmds.push(new Cmd(block.value, CmdType.Literal));
+      if (block) {
+        block.value = block.value.substr(1);
+        cmds.push(new Cmd(block.value, CmdType.Literal));
+      }
     } else if (
       (peek === 'i' && rdr.peek(2) === 'if') ||
       (peek === 'd' && rdr.peek(2) === 'do') ||
@@ -141,8 +145,8 @@ function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContex
           )}${NEWLINE}return writer.join("");${NEWLINE}}${NEWLINE}`
         );
       else cmds.push(new Cmd(parsed + '}'));
-    } else if (peek && !rxValid.test(last(chunk.value))) {
-      let remain: string, match: RegExpMatchArray;
+    } else if (peek && chunk && !rxValid.test(last(chunk.value))) {
+      let remain: string, match: RegExpMatchArray | null;
       block = '';
       while (!rdr.eof()) {
         remain = rdr.text.substr(rdr.position + 1);
@@ -165,7 +169,7 @@ function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContex
       }
       if (block) cmds.push(new Cmd(block, CmdType.Output));
     } else if (mode === Mode.Text) {
-      if (chunk.next) cmds.push(new Cmd('@', CmdType.Literal));
+      if (chunk?.next) cmds.push(new Cmd('@', CmdType.Literal));
     }
   }
 
@@ -190,21 +194,23 @@ function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContex
           cmds.push(new Cmd(chunk.value, 0));
           while (!rdr.eof()) {
             chunk = readUntil(rdr, '@', '>');
-            if (chunk.next == '@') {
+            if (chunk?.next === '@') {
               cmds.push(new Cmd((tagWritten ? '' : '<') + chunk.value, CmdType.Literal));
               tagWritten = true;
               parseCodeBlock();
             } else break;
           }
           block = chunk + '';
-          if (last(chunk.value) !== '/') {
+          if (last(chunk?.value) !== '/') {
             let nestedCount = 1,
-              nested: Chunk;
+              nested: Chunk | undefined;
             while (nestedCount > 0) {
               nested = readQuotedUntil(rdr, '</' + tagname, '<' + tagname);
               block += nested;
               if (rdr.eof()) break;
-              nestedCount += nested.next.substr(1, 1) === '/' ? -1 : 1;
+              if (nested) {
+                nestedCount += nested.next.substr(1, 1) === '/' ? -1 : 1;
+              }
             }
             block += readQuotedUntil(rdr, '>');
           }
@@ -216,8 +222,10 @@ function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContex
           cmds.push(...parseImpl(block, level + 1, Mode.Text, ctx));
         } else {
           const chunk1 = readQuotedUntil(rdr, '@', '<');
-          chunk.value += chunk.next + chunk1.value;
-          chunk.next = chunk1.next;
+          if (chunk1) {
+            chunk.value += chunk.next + chunk1.value;
+            chunk.next = chunk1.next;
+          }
           continue;
         }
       } else if (chunk.value) {
@@ -265,7 +273,7 @@ export class Razor {
   #templates = new Map<string, View>();
   #dialect: RazorDialect;
   #locals: string[];
-  #options: RazorOptions | undefined;
+  #options: RazorOptions;
 
   constructor(options?: RazorOptions) {
     this.#options = options ?? {};
