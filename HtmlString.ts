@@ -1,15 +1,15 @@
 export class HtmlString {
   #value: unknown;
 
-  get isHtmlString() {
+  get isHtmlString(): boolean {
     return true;
   }
 
   constructor(value: unknown) {
     this.#value = value;
   }
-  toString() {
-    return this.#value;
+  toString(): string {
+    return String(this.#value ?? '');
   }
 
   static isHtmlString(value: unknown): value is HtmlString {

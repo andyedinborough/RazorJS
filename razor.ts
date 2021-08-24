@@ -4,9 +4,9 @@ import { HtmlString } from './HtmlString';
 
 const html = new HtmlHelper();
 
-const rxValid = /^(?:await\s+)?(?:new\s+)?[a-z0-9\._]+/i,
-  rxTagName = /^[a-z]+(?:\:[a-z]+)?/i,
-  rxFunction = /\s*function[\s*\(]/;
+const rxValid = /^(?:await\s+)?(?:new\s+)?[a-z0-9._]+/i,
+  rxTagName = /^[a-z]+(?::[a-z]+)?/i,
+  rxFunction = /\s*function[\s*(]/;
 
 const NEWLINE = '\r\n';
 const NEWLINETAB = `${NEWLINE}\t`;
@@ -18,8 +18,8 @@ enum CmdType {
 }
 
 class Cmd {
-  code: string = '';
-  type: number = 0;
+  code = '';
+  type = 0;
   constructor(code: string, type = CmdType.Code) {
     this.code = code;
     this.type = type;
@@ -138,7 +138,7 @@ function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContex
             ctx.dialect.html
           }.raw(writer.join(""));${NEWLINE}}${NEWLINE}`
         );
-      else if (peek === 's' && block.substr(0, 6) != 'switch')
+      else if (peek === 's' && block.substr(0, 6) !== 'switch')
         ctx.sections.push(
           `sections.${parsed.substr(8, paren - 8).trim()} = function () {${functionTemplateBasic(ctx.dialect)}${parsed.substr(
             bracket + 1
@@ -183,7 +183,7 @@ function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContex
       continue;
     }
 
-    while (true) {
+    do {
       peek = rdr.peek();
 
       if (mode === Mode.Code && chunk.next === '<') {
@@ -233,7 +233,7 @@ function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContex
         else cmds.push(new Cmd(chunk.value));
       }
       break;
-    }
+    } while (chunk.value || chunk.next);
 
     parseCodeBlock();
   }
@@ -245,7 +245,7 @@ function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContex
   return cmds;
 }
 
-export type View = (model?: object, page?: object) => Promise<string>;
+export type View = (model?: unknown, page?: Record<string, unknown>) => Promise<string>;
 
 const DEFAULT_DIALECT = {
   helper: 'helper',
@@ -281,7 +281,7 @@ export class Razor {
     this.#locals = (options?.locals ?? []).filter(Boolean);
   }
 
-  parse(template: string) {
+  parse(template: string): { code: string; sections: string[]; helpers: string[] } {
     const ctx: ParseContext = { helpers: [], sections: [], dialect: this.#dialect, options: this.#options };
     const cmds = parseImpl(template, 0, Mode.Text, ctx);
     return {
@@ -291,19 +291,19 @@ export class Razor {
     };
   }
 
-  compile(code: string, page?: object, id?: string): View {
+  compile(code: string, page?: Record<string, unknown>, id?: string): View {
     const parsed = this.parse(code);
     let functionCode = functionTemplate(id, parsed.helpers.join(NEWLINE) + NEWLINE + parsed.sections.join(NEWLINE) + parsed.code, this.#dialect, this.#locals);
     functionCode = this.#options.viewCompiled?.(functionCode) ?? functionCode;
 
-    let func: (page: object, sections: Record<string, View>) => Promise<string>;
+    let func: (page: Record<string, unknown>, sections: Record<string, View>) => Promise<string>;
     try {
       func = new Function('page', 'sections', functionCode)();
     } catch (x) {
       throw new Error(`Unable to compile: ${x}${NEWLINE}${NEWLINE}${functionCode}`);
     }
 
-    return async (model: unknown, page1?: object) => {
+    return async (model: unknown, page1?: Record<string, unknown>) => {
       const ctx = { layout: '', viewBag: {}, [this.#dialect.html]: html, ...page, ...page1, model },
         sections: Record<string, View> = {};
 
@@ -317,6 +317,9 @@ export class Razor {
 
       if (ctx.layout) {
         const layoutView = await this.view(ctx.layout);
+        if (!layoutView) {
+          throw new Error(`Layout ${ctx.layout} not found`);
+        }
         const isSectionDefined = (name: string) => typeof sections[name] === 'function';
         result = await layoutView(undefined, {
           ...page1,
@@ -339,14 +342,14 @@ export class Razor {
     };
   }
 
-  async view(id: string, page?: object) {
+  async view(id: string, page?: Record<string, unknown>): Promise<View | undefined> {
     const key = '~/' + id;
 
     let template = this.#templates.get(key);
     if (!template) {
       const script = await this.#options.findView?.(id);
       if (script === undefined) {
-        throw new Error(`View not found ${id}`);
+        return undefined;
       }
       template = this.compile(script, page, id);
       this.#templates.set(key, template);
@@ -355,7 +358,7 @@ export class Razor {
     return template;
   }
 
-  async render(markup: string, model?: object, page?: object) {
+  async render(markup: string, model?: unknown, page?: Record<string, unknown>): Promise<string> {
     let template = this.#templates.get(markup);
     if (!template) {
       template = this.compile(markup);
