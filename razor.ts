@@ -2,7 +2,6 @@ import { Chunk, last, readBlock, Reader, readQuotedUntil, readUntil, readWhitesp
 import { doubleEncode, HtmlHelper } from './HtmlHelper';
 import { HtmlString } from './HtmlString';
 
-const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 const html = new HtmlHelper();
 
 const rxValid = /^(?:await\s+)?(?:new\s+)?[a-z0-9\._]+/i,
@@ -46,20 +45,22 @@ function write(a){ writeLiteral(${html}.encode(a)); };
 `;
 }
 
-function functionTemplate(code: string, dialect: RazorDialect, locals: string[]) {
+function functionTemplate(id: string, code: string, dialect: RazorDialect, locals: string[]) {
   const { model, viewBag, html, isSectionDefined, renderSection, renderBody, layout } = dialect;
-  return `"use strict";
+  return `return async function ${id?.replace(/\W+/g, '_') ?? 'template'}(page, sections) {
+"use strict";
 const { 
   model: ${model}, viewBag: ${viewBag}, html: ${html}, 
   isSectionDefined: ${isSectionDefined}, renderSection: ${renderSection}, 
   renderBody: ${renderBody}, layout: _rzr_layout 
 } = page;
-const ${locals?.length ? `{ ${locals.join(', ')} } = page;` : ''}
+${locals.length ? `const { ${locals.join(', ')} } = page;` : ''}
 ${functionTemplateBasic(dialect)}
 let ${layout} = _rzr_layout;
 ${code}
-if(_rzr_layout !== ${dialect.layout}) { this.layout = ${dialect.layout}; }
-return writer.join("");`;
+if(_rzr_layout !== ${dialect.layout}) { page.layout = ${dialect.layout}; }
+return writer.join("");
+}`;
 }
 
 enum Mode {
@@ -262,15 +263,14 @@ interface RazorOptions {
 
 export class Razor {
   #templates = new Map<string, View>();
-  #findView: ((id: string) => Promise<string | undefined>) | undefined;
   #dialect: RazorDialect;
   #locals: string[];
   #options: RazorOptions | undefined;
 
   constructor(options?: RazorOptions) {
-    this.#options = options;
+    this.#options = options ?? {};
     this.#dialect = { ...DEFAULT_DIALECT, ...options?.dialect };
-    this.#locals = options?.locals ?? [];
+    this.#locals = (options?.locals ?? []).filter(Boolean);
   }
 
   parse(template: string) {
@@ -283,14 +283,14 @@ export class Razor {
     };
   }
 
-  compile(code: string, page?: object): View {
+  compile(code: string, page?: object, id?: string): View {
     const parsed = this.parse(code);
-    let functionCode = functionTemplate(parsed.helpers.join(NEWLINE) + NEWLINE + parsed.sections.join(NEWLINE) + parsed.code, this.#dialect, this.#locals);
+    let functionCode = functionTemplate(id, parsed.helpers.join(NEWLINE) + NEWLINE + parsed.sections.join(NEWLINE) + parsed.code, this.#dialect, this.#locals);
     functionCode = this.#options.viewCompiled?.(functionCode) ?? functionCode;
 
-    let func: Function;
+    let func: (page: object, sections: Record<string, View>) => Promise<string>;
     try {
-      func = new AsyncFunction('page', 'sections', functionCode);
+      func = new Function('page', 'sections', functionCode)();
     } catch (x) {
       throw new Error(`Unable to compile: ${x}${NEWLINE}${NEWLINE}${functionCode}`);
     }
@@ -299,12 +299,19 @@ export class Razor {
       const ctx = { layout: '', viewBag: {}, [this.#dialect.html]: html, ...page, ...page1, model },
         sections: Record<string, View> = {};
 
-      let result: string = await func.apply(undefined, [ctx, sections]);
+      let result: string;
+
+      try {
+        result = await func(ctx, sections);
+      } catch (x) {
+        throw new Error(`Unable to execute template: ${x}${NEWLINE}${NEWLINE}${functionCode}`);
+      }
 
       if (ctx.layout) {
-        const layoutView = await this.view(ctx.layout, page);
+        const layoutView = await this.view(ctx.layout);
         const isSectionDefined = (name: string) => typeof sections[name] === 'function';
         result = await layoutView(undefined, {
+          ...page1,
           renderBody() {
             return new HtmlString(result);
           },
@@ -329,8 +336,11 @@ export class Razor {
 
     let template = this.#templates.get(key);
     if (!template) {
-      const script = await this.#findView?.(id);
-      template = this.compile(script, page);
+      const script = await this.#options.findView?.(id);
+      if (script === undefined) {
+        throw new Error(`View not found ${id}`);
+      }
+      template = this.compile(script, page, id);
       this.#templates.set(key, template);
     }
 

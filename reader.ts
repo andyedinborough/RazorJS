@@ -59,7 +59,7 @@ export class Reader {
   public length: number = 0;
 
   constructor(text: string) {
-    this.text = text;
+    this.text = String(text ?? '');
     this.position = -1;
     this.length = this.text.length;
   }
