@@ -174,3 +174,15 @@ it('passes legacy tests', async () => {
 
   equal((await razor.render('@model.forEach(function(x){ @x })', [0])).trim(), '0', 'rendering from inside an inlined-function');
 });
+
+it('outputs html from codeblock, but continues code', async () =>
+  expect(
+    (
+      await new Razor().render(`
+@{ 
+  <h1>hi</h1>
+  var test = 'hi'; 
+}<h2>@hi</h2>
+`)
+    ).trim()
+  ).toBe('<h1>hi</h1>'));
