@@ -205,7 +205,7 @@ function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContex
             let nestedCount = 1,
               nested: Chunk | undefined;
             while (nestedCount > 0) {
-              nested = readQuotedUntil(rdr, '</' + tagname, '<' + tagname);
+              nested = readUntil(rdr, '</' + tagname, '<' + tagname);
               block += nested;
               if (rdr.eof()) break;
               if (nested) {
@@ -267,6 +267,7 @@ interface RazorOptions {
   locals?: string[];
   processCommand?: (cmd: string) => string;
   viewCompiled?: (code: string) => string;
+  log?: (msg: string) => void;
 }
 
 export class Razor {

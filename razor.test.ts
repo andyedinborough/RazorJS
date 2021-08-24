@@ -132,39 +132,37 @@ it('can change dialect', async () => {
 });
 
 it('passes legacy tests', async () => {
-  const equal = (a: unknown, b: unknown) => expect(a).toBe(b);
   const razor = new Razor();
-  equal((await razor.render('@{ <a b=@0 c=@1> </a> }')).trim(), '<a b=0 c=1> </a>');
-  equal((await razor.render('test\\test')).trim(), 'test\\test');
-  equal((await razor.render('@if(true) { if(true){ <a @(0>1?0:1) /> } }')).trim(), '<a 1 />');
-  equal((await razor.render('@if(true) { if(true){ <a @(0>1?0:1) /> <a> </a> } }')).trim(), '<a 1 /><a> </a>');
-  equal(await razor.render('@{ model.items.forEach(function(x){ @x }); }', { items: [0] }), '0');
-  equal(await razor.render('test'), 'test');
-  equal(await razor.render('@@test'), '@test');
-  equal(await razor.render('test@test.com'), 'test@test.com');
-  equal(await razor.render('test@@@(model.test).com', { test: 'test' }), 'test@test.com');
-  equal(await razor.render('hello @model.name', { name: 'world' }), 'hello world');
-  equal(await razor.render('hello @model.name[0]', { name: 'world'.split('') }), 'hello w');
-  equal(await razor.render("hello @model['name']", { name: 'world' }), 'hello world');
-  equal(
+  expect((await razor.render('@{ <a b=@0 c=@1> </a> }')).trim()).toBe('<a b=0 c=1> </a>');
+  expect((await razor.render('test\\test')).trim()).toBe('test\\test');
+  expect((await razor.render('@if(true) { if(true){ <a @(0>1?0:1) /> } }')).trim()).toBe('<a 1 />');
+  expect((await razor.render('@if(true) { if(true){ <a @(0>1?0:1) /> <a> </a> } }')).trim()).toBe('<a 1 /><a> </a>');
+  expect(await razor.render('@{ model.items.forEach(function(x){ @x }); }', { items: [0] })).toBe('0');
+  expect(await razor.render('test')).toBe('test');
+  expect(await razor.render('@@test')).toBe('@test');
+  expect(await razor.render('test@test.com')).toBe('test@test.com');
+  expect(await razor.render('test@@@(model.test).com', { test: 'test' })).toBe('test@test.com');
+  expect(await razor.render('hello @model.name', { name: 'world' })).toBe('hello world');
+  expect(await razor.render('hello @model.name[0]', { name: 'world'.split('') })).toBe('hello w');
+  expect(await razor.render("hello @model['name']", { name: 'world' })).toBe('hello world');
+  expect(
     await razor.render('hello @model.name("world")', {
       name: function (n: unknown) {
         return n;
       },
-    }),
-    'hello world'
-  );
-  equal(await razor.render('te@*FAIL*@st'), 'test');
-  equal(await razor.render('@if(model.name){ @model.name }', { name: 'test' }), 'test');
-  equal(await razor.render('@if(!model.name){ @fail(); } else { @model.name; }', { name: 'test' }), 'test');
-  equal((await razor.render('@if(true){ @:test }')).trim(), 'test');
-  equal((await razor.render('@helper test(name){ @:Hi @name } @test("bob")')).trim(), 'Hi bob');
-  equal((await razor.render('@if(true){ <div><div>nested</div></div>  }')).trim(), '<div><div>nested</div></div>');
-  equal((await razor.render('@{  }')).trim(), '');
-  equal((await razor.render('@switch(model.test){ case 0: <br/> break; }', { test: 0 })).trim(), '<br/>');
-  equal((await razor.render('@if(true){ <text>hi</text> }')).trim(), 'hi');
-  equal((await razor.render('@if(true){ if(false) { @:fail } else { @:win } }')).trim(), 'win');
-  equal((await razor.render('@if(true){ if(false) { @:fail } else { <div>Hi!</div> if(false) { } <div>Hi!</div> } }')).trim(), '<div>Hi!</div><div>Hi!</div>');
+    })
+  ).toBe('hello world');
+  expect(await razor.render('te@*FAIL*@st')).toBe('test');
+  expect(await razor.render('@if(model.name){ @model.name }', { name: 'test' })).toBe('test');
+  expect(await razor.render('@if(!model.name){ @fail(); } else { @model.name; }', { name: 'test' })).toBe('test');
+  expect((await razor.render('@if(true){ @:test }')).trim()).toBe('test');
+  expect((await razor.render('@helper test(name){ @:Hi @name } @test("bob")')).trim()).toBe('Hi bob');
+  expect((await razor.render('@if(true){ <div><div>nested</div></div>  }')).trim()).toBe('<div><div>nested</div></div>');
+  expect((await razor.render('@{  }')).trim()).toBe('');
+  expect((await razor.render('@switch(model.test){ case 0: <br/> break; }', { test: 0 })).trim()).toBe('<br/>');
+  expect((await razor.render('@if(true){ <text>hi</text> }')).trim()).toBe('hi');
+  expect((await razor.render('@if(true){ if(false) { @:fail } else { @:win } }')).trim()).toBe('win');
+  expect((await razor.render('@if(true){ if(false) { @:fail } else { <div>Hi!</div> if(false) { } <div>Hi!</div> } }')).trim()).toBe('<div>Hi!</div><div>Hi!</div>');
 
   try {
     await razor.render('@(');
@@ -173,7 +171,7 @@ it('passes legacy tests', async () => {
     // yolo
   }
 
-  equal((await razor.render('@model.forEach(function(x){ @x })', [0])).trim(), '0');
+  expect((await razor.render('@model.forEach(function(x){ @x })', [0])).trim()).toBe('0');
 });
 
 it('outputs html from codeblock, but continues code', async () =>
@@ -181,8 +179,13 @@ it('outputs html from codeblock, but continues code', async () =>
     (
       await new Razor().render(`
 @{ 
-  <h1>hi</h1>\rvar test = 'hi'; 
-}<h2>@test</h2>
+  // incomplete quote in text
+  <p>test's</p>
+  var asdfdddf = 'rock'; 
+  <p>@asdfdddf</p>
+}
 `)
-    ).trim()
-  ).toBe('<h1>hi</h1><h2>hi</h2>'));
+    )
+      .trim()
+      .replace(/[\r\n\s\t]/g, '')
+  ).toBe(`<p>test's</p><p>rock</p>`));
