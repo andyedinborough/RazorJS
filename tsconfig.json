@@ -2,8 +2,10 @@
   "include": ["**/*.ts"],
   "exclude": ["node_modules", "**/*.test.ts"],
   "compilerOptions": {
-    "target": "es2015",
-    "moduleResolution": "Node",
+    "target": "es6",
+    "esModuleInterop": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
     "skipLibCheck": true,
     "noImplicitAny": true,
     "outDir": "./dist",

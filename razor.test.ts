@@ -189,3 +189,7 @@ it('outputs html from codeblock, but continues code', async () =>
       .trim()
       .replace(/[\r\n\s\t]/g, '')
   ).toBe(`<p>test's</p><p>rock</p>`));
+
+it('supports @functions { }', async () => {
+  expect(await (await new Razor().render(`@functions { function sayHi(){ @:hi } }\n@sayHi()`)).trim()).toBe('hi');
+});

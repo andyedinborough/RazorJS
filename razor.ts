@@ -107,6 +107,7 @@ function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContex
       (peek === 'i' && rdr.peek(2) === 'if') ||
       (peek === 'd' && rdr.peek(2) === 'do') ||
       (peek === 'f' && rdr.peek(3) === 'for') ||
+      (peek === 'f' && rdr.peek(9) === 'functions') ||
       (peek === 'w' && rdr.peek(5) === 'while') ||
       (peek === 'h' && rdr.peek(6) === ctx.dialect.helper) ||
       (peek === 's' && rdr.peek(6) === 'switch') ||
@@ -144,6 +145,7 @@ function parseImpl(template: string, level: number, mode: Mode, ctx: ParseContex
             bracket + 1
           )}${NEWLINE}return writer.join("");${NEWLINE}}${NEWLINE}`
         );
+      else if (peek === 'f' && block.substr(0, 9) === 'functions') cmds.push(new Cmd(parsed.substr(parsed.indexOf('{') + 1)));
       else cmds.push(new Cmd(parsed + '}'));
     } else if (peek && chunk && !rxValid.test(last(chunk.value))) {
       let remain: string, match: RegExpMatchArray | null;

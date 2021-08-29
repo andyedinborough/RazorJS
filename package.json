@@ -1,8 +1,8 @@
 {
   "title": "RazorJS",
-  "name": "razor-js",
+  "name": "@andyedinborough/razor-js",
   "description": "A JavaScript implementation of the Razor view engine",
-  "version": "0.4.0",
+  "version": "0.4.3",
   "author": {
     "name": "Andy Edinborough (@andyedinborough)"
   },
@@ -19,15 +19,16 @@
     "@types/jest": "^27.0.1",
     "@typescript-eslint/eslint-plugin": "^4.29.3",
     "@typescript-eslint/parser": "^4.29.3",
-    "babel-jest": "^27.0.6",
+    "babel-jest": "^27.1.0",
     "eslint": "^7.32.0",
-    "jest": "^27.0.6",
-    "typescript": "4.3.5"
+    "jest": "^27.1.0",
+    "typescript": "4.4.2"
   },
-  "main": "./bin/node/razor.js",
   "scripts": {
-    "build": "rm -rf ./dist/ && yarn lint && yarn test && ./node_modules/.bin/tsc",
+    "compile": "./node_modules/.bin/tsc",
+    "build": "rm -rf ./dist/ && yarn lint && yarn test && yarn compile",
     "lint": "eslint . --ext .ts --fix",
-    "test": "jest"
+    "test": "jest",
+    "x-publish": "yarn build && cp ./package.json ./dist/package.json && npm publish ./dist --access=public"
   }
 }
