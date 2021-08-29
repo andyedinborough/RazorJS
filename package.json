@@ -1,8 +1,8 @@
 {
   "title": "RazorJS",
-  "name": "razor",
-  "description": "A JavaScript implementation of the Razor view engine for browsers and Node.",
-  "version": "0.3.4",
+  "name": "razor-js",
+  "description": "A JavaScript implementation of the Razor view engine",
+  "version": "0.4.0",
   "author": {
     "name": "Andy Edinborough (@andyedinborough)"
   },
