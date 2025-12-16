@@ -1,5 +1,5 @@
-import 'jest';
-import { Razor } from './razor';
+import { it, expect } from 'bun:test';
+import { Razor } from './Razor';
 
 it('can render without code blocks', async () => expect(await new Razor().render('hi')).toBe('hi'));
 it('can render code blocks', async () =>

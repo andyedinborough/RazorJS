@@ -3,6 +3,7 @@
   "exclude": ["node_modules", "**/*.test.ts"],
   "compilerOptions": {
     "target": "es6",
+    "types": ["@types/bun"],
     "esModuleInterop": true,
     "module": "commonjs",
     "moduleResolution": "node",
