@@ -1,5 +1,5 @@
-import 'jest';
-import { Reader } from './reader';
+import { it, expect } from 'bun:test';
+import { Reader } from './Reader';
 
 it('can read all', () => {
   const rdr = new Reader('test');
